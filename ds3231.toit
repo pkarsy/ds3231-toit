@@ -24,6 +24,8 @@ class Ds3231:
   static REG-START_ ::= 0x00  // The first register is at location 0x00
   static REG-NUM_ ::= 7       // and we read 7 consequitive reagisters
   registers_/serial.Registers ::= ?
+  // We forward the time a few msec to compensate for the toit virtual
+  // machine and i2c delays
   compensation_/Duration := Duration --ms=8
 
   constructor --device/serial.Device --compensation/Duration?=null:
@@ -90,6 +92,7 @@ class Ds3231:
   
   set_ time/Time -> none:
     u := time.utc
+    // must be 7 fields, the same as the Ds3231 registers
     t := [u.s, u.m, u.h, u.weekday, u.day, u.month, (u.year - 2000)]
     if t.size != REG-NUM_: throw "INCORRECT ELEMENTS NUMBER"
     buf := ByteArray REG-NUM_
