@@ -1,38 +1,40 @@
 import esp32 show adjust_real_time_clock
 import ...ds3231 show Ds3231
-import ntp
 
 // Only RTC is available, no wifi. The DS3231 can be off 1-2min/year
-// but for many applications this is OK
+// but for many applications this is OK, for example irrigation
 
 // The following configurations are for convenience (the pins are in the same order)
-// In fact you are free to use any pin is allowed by the board or the ESP chip
+// you are free to use any pin that is allowed by the board or the ESP chip
 // read the board's documentation for the allowed pins
 rtc ::= Ds3231 --sda=5 --scl=4 // /* esp32-c3 luatos core (with and without serial chip) */
-//ds := Ds3231 --sda=25 --scl=26 --vcc=33 --gnd=32 /* Lolin32 lite */
-// TODO devkit
-// todo S3 devkit
+// rtc := Ds3231 --sda=25 --scl=26 --vcc=33 --gnd=32 /* Lolin32 lite */
+// rtc := Ds3231 --sda=33 --scl=32 --vcc=25 --gnd=26 /* ESP32 Devkit all versions */
+// rtc := Ds3231 --sda=35 --scl=36 --vcc=37 --gnd=38 /* S3 devkitC abudance of pins here */
 
 main:
-  // set local time if you wish here
-  set-timezone "EET-2EEST,M3.5.0/3,M10.5.0/4"
+  // set-timezone "EET-2EEST,M3.5.0/3,M10.5.0/4"
+  task:: update-system-time
+  sleep --ms=1_000 // we wait a while, so the main-job finds correct time
+  task:: main-job
 
-  task:: update-time
-  sleep --ms=1000
-  task::
-    while true:
-      // works with or without internet
-      // the Ds3231 must have the time set
-      print "The time is $Time.now.local" // UTC time. For local time use Time.now.local
-      sleep --ms=5000
 
-update-time:
+main-job: // does not return, we need to call it with task::
+  while true:
+    // works with or without internet. Of course the DS3231 must have correct
+    // time (and a good CR2032 coin cell). Use the other example to do this
+    print "The time is $Time.now" // UTC time. For local time use Time.now.local
+    sleep --ms=5_000
+
+
+update-system-time: // does not return, we need to call it with task::
   while true:
     result := rtc.get
     if result.error: print "Cannot get the RTC time : $result.error"
     else:
-      // The Ds3231 is more accurate than the ESP32 board crystal
-      // we prefer once per hour to get the time
+      // The Ds3231 crystal is way more accurate than the crystal on the ESP32 board
+      // and also is temperature compensated.
+      // So is better once per hour to refresh the system time
       adjust_real_time_clock result.adjustment
       print "Got system time from RTC : adjustment=$result.adjustment"
     sleep (Duration --h=1)
