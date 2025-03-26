@@ -5,7 +5,7 @@ import ntp
 // we have both wifi and DS3231 and we want the RTC
 // for the periods the WIFI is anavailable
 
-ds := Ds3231 --sda=5 --scl=4 // /* esp32-c3 luatos core */
+ds := Ds3231 --sda=5 --scl=4 /* esp32-c3 luatos core */
 //ds := Ds3231 --sda=25 --scl=26 --vcc=33 --gnd=32 /* Lolin32 lite */
 // TODO devkit
 // todo S3 devkit

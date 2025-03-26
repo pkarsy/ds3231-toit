@@ -51,12 +51,12 @@ class Ds3231:
     if gnd >= 0:
       gpio.Pin gnd --output --value=0
   
-  get --accurate=true
+  get --wait-sec-change=true
       --allow-wrong-time=false 
       -> Duration? :
     rtctime/Time? := null
     exception := catch:
-      if accurate:
+      if wait-sec-change:
         v := registers.read-u8 REG-START_
         while true:
           yield
@@ -78,12 +78,12 @@ class Ds3231:
         Time.now.to rtctime
 
   set time/Time
-      --accurate=true
+      --wait-sec-change=true
       --allow-wrong-time=false
       -> string? :
     if allow-wrong-time==false and time.utc.year<2025:
       return "YEAR_LESS_THAN_2025"
-    if accurate: // waits until the second changes
+    if wait-sec-change: // waits until the second changes
       ms/Duration := Duration --ms = (time.utc.ns/1e6).to-int
       target-delay/Duration ::= ?
       if (ms + compensation_)  >= (Duration --ms=995) :
@@ -121,33 +121,57 @@ class Ds3231:
   // use only if you already have a value for example
   // using TODO
   // The new value will work after the next temp conversion
-  set-aging-register val/int -> string? :
+  // values are -128 up to 127 (an 8 bit signed number)
+  set-aging-offset val/int -> string? :
+    aging-register ::= 0x10 // Ds3231 datasheet
     if (val<-128) or (val>127):
-      return "WRONG_AGING_VALUE"
+      return "WRONG_AGING_OFFSET"
     err:= catch:
       registers.write-i8 0x10 val
     return err
 
-  enable-sqw_ and-mask -> string? :
-    err := catch:
-      control-register := 0x0E // Ds3231 datasheet
-      val := registers.read-u8 control-register
-      val = val & and-mask // we modify the register according to and-mask
-      registers.write-u8 control-register val
-    return err
+  enable-sqw_ bits -> string? :
+    if bits<0 or bits>255:
+      return "VALUE_OUT_OF_RANGE"
+    // mask is a value with all bits to be changed (and only them) set to 1
+    // newvalue is a value that contains the new state of those bits
+    // the other bits are ignored.
+    control-register := 0x0E // Ds3231 datasheet
+    // DELETE debug 
+    //registers.write-u8 control-register 0b11100
+    mask ::= 0b000_111_00 // any 0 will be ignored when setting the bits
+    value/int := -1
+    err:= catch:
+      value = registers.read-u8 control-register
+    if err :
+      return err
+    if value==-1:
+      return "PROGARMMING_BUG"
+    //print value
+    // we set 0/1 only to the bits where mask has 1
+    new-value := setbits --value=value --mask=mask --bits=bits // (value & ~mask) | (bits & mask);
+    //print "value=0b$(%08b value) new=0b$(%08b new-value)"
+    registers.write-u8 control-register new-value
+    return null
+  
+  setbits --value/int --mask/int --bits/int -> int:
+    return (value & ~mask) | (bits & mask);
 
-  enable-sqw-1hz -> string?
-    :
-    return enable-sqw_ 0b111_000_11 // RS2->0 RS1->0 INTCN->0
+  // TThe library does not use the SQW pin but you may want it for other purposes
+  enable-sqw-1hz -> string? :
+    return enable-sqw_ 0b000_000_00 // RS2->0 RS1->0 INTCN->0 0b000_000_00 is the same
   
   enable-sqw-1kilohz -> string?:
-    return enable-sqw_ 0b111_010_11
+    return enable-sqw_ 0b000_010_00
   
   enable-sqw-4kilohz -> string? :
-    return enable-sqw_ 0b111_100_11
+    return enable-sqw_ 0b000_100_00
   
   enable-sqw-8kilohz -> string? :
-    return enable-sqw_ 0b111_110_11
+    return enable-sqw_ 0b000_110_00
+  
+  disable-sqw -> string? :
+    return enable-sqw_ 0b000_111_00
 
   // has nothing to do with RTC registers. It just tries to
   // compensate for the inaccuracies of the bus and MCU finite speed
