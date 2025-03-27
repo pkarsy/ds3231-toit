@@ -37,23 +37,24 @@ update-time:
   //ds := Ds3231 --sda=5 --scl=4 // --vcc=33 --gnd=32 /* esp32-c3 luatos core */
   if true: // This happens on boot
     // The RTC is avoailable before the NTP and sets the time first
-    rtc-result := ds.get
+    rtc-adjustment := ds.get
     // the result cannot be null (unlike the ntp) so we check result.error instead of result
-    if rtc-result.error: print "Cannot get the RTC time : $rtc-result.error"
+    if not rtc-adjustment: print "Cannot get the RTC time : $ds.error"
     else:
-      adjust_real_time_clock rtc-result.adjustment
-      print "Got system time from RTC : adjustment=$rtc-result.adjustment"
+      adjust_real_time_clock rtc-adjustment
+      print "Got system time from RTC : adjustment=$rtc-adjustment drift=$ds.drift"
   while true:
-    ntp-result := ntp.synchronize --max-rtt=(Duration --ms=100) // -server="gr.pool.ntp.org" 
+    ntp-result := ntp.synchronize --max-rtt=(Duration --ms=500) // -server="gr.pool.ntp.org" 
     if ntp-result:
-      now:=Time.now
-      adjust_real_time_clock ntp-result.adjustment // may need some time (background) to fix the time
-      err/string? := ds.set now+ntp-result.adjustment // we do not use Time.now, see last comment
-      // this block is printed with up to 1sec delay due to Ds3231.set function
+      // we first set the RTC clock, so the adjustment will be correct
+      err/string? := ds.set --adjustment=ntp-result.adjustment // can block up to ~1sec
+      // Now we can also set the system time
+      adjust_real_time_clock ntp-result.adjustment // The time will be corrected gradually
+      // this block is printed with up to 1sec delay see the comment above
       // we wanted to do the real job before printing
       print "NTP sync done adj=$ntp-result.adjustment acc=$ntp-result.accuracy"
       if err: print err
-      else: print "Setting the RTC time using the system time"
+      else: print "Setting the RTC time using the NTP time"
       //
       sleep --ms=1_800_000 // sync again in half an hour
     else:
@@ -63,12 +64,14 @@ update-time:
 check-time-sync: // for debugging purposes
   sleep --ms=5000
   while true:
-    ntp-result := ntp.synchronize --server="gr.pool.ntp.org"
+    ntp-result := ntp.synchronize //--server="gr.pool.ntp.org"
     if ntp-result:
       print "[TEST-START] NTP-time - System-time : $ntp-result.adjustment accuracy=$ntp-result.accuracy"
-    rtc-result := ds.get
-    if not rtc-result.error:
-      print "[TEST      ] RTC-time - System-time : $rtc-result.adjustment"
-    if (not rtc-result.error) and (ntp-result):
-      print "[TEST-END  ] NTP-time - RTC-time    : $(ntp-result.adjustment - rtc-result.adjustment)"
+    rtc-adjustment := ds.get
+    if rtc-adjustment:
+      print "[TEST      ] RTC-time - System-time : $rtc-adjustment drift=$ds.drift"
+      if ntp-result:
+        print "[TEST-END  ] NTP-time - RTC-time    : $(ntp-result.adjustment - rtc-adjustment)"
+    else:
+      print "Cannot get the time from the RTC : $ds.error"
     sleep --ms=30_000

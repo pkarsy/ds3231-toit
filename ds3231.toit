@@ -9,28 +9,20 @@ import gpio
 import i2c
 import serial
 
-class Result:
-  adjustment/Duration? ::= ?
-  error/string? ::= ?
-  constructor .adjustment .error:
-  stringify:
-    return "{\"Adjustment-ms\":$adjustment.in-ms.to-int,\"Error\":$error}"
-
-
 class Ds3231:
   static DEFAULT-I2C ::= 0x68 // This is different if we solder A1 A2 A3 pads
   static REG-START_ ::= 0x00  // The first register is at location 0x00
   static REG-NUM_ ::= 7       // and we read 7 consequitive reagisters
-  // We do not hide the registers (using registers_)
-  // as there is a myriad of settings this driver does not cover
+  // The registers variable is public to be used with
+  // the myriad of settings this driver does not cover
   registers/serial.Registers ::= ?
   // We forward the time a few msec to compensate for the toit virtual
-  // machine and i2c delays
+  // machine ESP32 and i2c delays
   compensation_ := Duration --ms=8
   error/string? := null
+  last-set-time_/Time? := null 
 
-  constructor
-      --device/serial.Device :
+  constructor --device/serial.Device :
     registers=device.registers
 
   constructor
@@ -45,7 +37,7 @@ class Ds3231:
     if addr==-1:
       addr = Ds3231.DEFAULT-I2C
     device := bus.device addr
-    registers=device.registers
+    registers = device.registers
     if vcc >= 0:
       gpio.Pin vcc --output --value=1
     if gnd >= 0:
@@ -68,19 +60,20 @@ class Ds3231:
       error = exception
       return null
     if rtctime==null:
-      error="NO_TIME_PROGRAMMING_ERROR"
+      error="GET_PROGRAMMING_ERROR"
       return null
     if rtctime.utc.year<2025:
       error="DS3231_TIME_IS_INVALID"
       return null
     else:
-      return
-        Time.now.to rtctime
+      return Time.now.to rtctime
 
-  set time/Time
+
+  set --adjustment/Duration
       --wait-sec-change=true
       --allow-wrong-time=false
-      -> string? :
+      -> string? : // error as string or null
+    time := Time.now + adjustment
     if allow-wrong-time==false and time.utc.year<2025:
       return "YEAR_LESS_THAN_2025"
     if wait-sec-change: // waits until the second changes
@@ -92,9 +85,10 @@ class Ds3231:
         target-delay = Duration --ms=1000
       delay/Duration ::= target-delay - ms - compensation_
       time = time + target-delay
-      sleep delay
+      sleep delay // TODO busy loop may be more accurate
     exception := catch: this.set_ time
     if exception: return exception //failed to set the RTC, we return a description
+    last-set-time_ = time
     return null // no error
 
   get_ -> Time :
@@ -111,7 +105,7 @@ class Ds3231:
     // must be 7 fields, the same as the Ds3231 registers
     t := [u.s, u.m, u.h, u.weekday, u.day, u.month, (u.year - 2000)]
     // We can get this error only by messing with the fields
-    if t.size != REG-NUM_: throw "INCORRECT ELEMENTS NUMBER"
+    if t.size != REG-NUM_: throw "INCORRECT_ELEMENTS_NUMBER"
     buf := ByteArray REG-NUM_
     REG-NUM_.repeat:
       buf[it]=int2bcd_ t[it]
@@ -130,48 +124,68 @@ class Ds3231:
       registers.write-i8 0x10 val
     return err
 
-  enable-sqw_ bits -> string? :
-    if bits<0 or bits>255:
-      return "VALUE_OUT_OF_RANGE"
-    // mask is a value with all bits to be changed (and only them) set to 1
-    // newvalue is a value that contains the new state of those bits
-    // the other bits are ignored.
-    control-register := 0x0E // Ds3231 datasheet
-    // DELETE debug 
-    //registers.write-u8 control-register 0b11100
-    mask ::= 0b000_111_00 // any 0 will be ignored when setting the bits
-    value/int := -1
-    err:= catch:
-      value = registers.read-u8 control-register
-    if err :
-      return err
-    if value==-1:
-      return "PROGARMMING_BUG"
-    //print value
-    // we set 0/1 only to the bits where mask has 1
-    new-value := setbits --value=value --mask=mask --bits=bits // (value & ~mask) | (bits & mask);
-    //print "value=0b$(%08b value) new=0b$(%08b new-value)"
-    registers.write-u8 control-register new-value
-    return null
+  set-sqw_ value -> string? :
+    return set-value-with-mask
+      --register=0x0e
+      --mask=0b000_111_00
+      --value=value
   
-  setbits --value/int --mask/int --bits/int -> int:
-    return (value & ~mask) | (bits & mask);
+  // mask is a value with all bits to be changed (and only them) set to 1
+  // value is a byte containing the values 0/1 we want to apply (only the 1s in the mask)
+  // returns null if no error or the error as string
+  set-value-with-mask --register/int --mask/int --value/int -> string?:
+    if not (0<=register<=0x12 and 0<=mask<=255 and 0<=value<=255):
+      return "PARAMETERS_OUT_OF_BOUNDS"
+    new-value := value
+    old-value/int? := null
+    err := catch:
+      old-value = registers.read-u8 register
+    if err:
+      return err
+    if old-value==null:
+      return "SET-VALUE-PROGRAMMING-ERROR"
+    value-to-apply := (old-value & ~mask) | (new-value & mask)
+    err = catch:
+      registers.write-u8 register value-to-apply
+    return err
 
   // TThe library does not use the SQW pin but you may want it for other purposes
   enable-sqw-1hz -> string? :
-    return enable-sqw_ 0b000_000_00 // RS2->0 RS1->0 INTCN->0 0b000_000_00 is the same
+    return set-sqw_ 0b000_000_00 // RS2->0 RS1->0 INTCN->0 0b000_000_00 is the same
   
   enable-sqw-1kilohz -> string?:
-    return enable-sqw_ 0b000_010_00
+    return set-sqw_ 0b000_010_00
   
   enable-sqw-4kilohz -> string? :
-    return enable-sqw_ 0b000_100_00
+    return set-sqw_ 0b000_100_00
   
   enable-sqw-8kilohz -> string? :
-    return enable-sqw_ 0b000_110_00
+    return set-sqw_ 0b000_110_00
   
   disable-sqw -> string? :
-    return enable-sqw_ 0b000_111_00
+    return set-sqw_ 0b000_111_00
+  
+  enable-battery-backed-sqw -> string? :
+    return set-value-with-mask --register=0x0e --value=0b0_1_000000 --mask=0x0_1_000000
+  
+  disable-battery-backed-sqw -> string? :
+    return set-value-with-mask --register=0x0e --value=0b0_0_000000 --mask=0x0_1_000000
+  
+  
+  temperature -> int? :
+    control-register := 0x11 // Ds3231 datasheet
+    error = catch:
+      t := registers.read-i8 control-register
+      return t
+    return null
+
+  drift --ppm/float=2.0 -> Duration?:
+    t/Time := Time.now
+    if last-set-time_==null:
+      error = "THE_TIME_IS_NEVER_WRITTEN_TO_DS3231"
+      return null
+    return (last-set-time_.to t)*ppm/1e6
+    
 
   // has nothing to do with RTC registers. It just tries to
   // compensate for the inaccuracies of the bus and MCU finite speed
