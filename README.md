@@ -39,25 +39,24 @@ All the above are only useful if you know the wanted accuracy. Some hints:
 
 - For a project having NTP(internet) time and we want the RTC as a backup, the DS3231 is already extremly accurate.
 - For projects expecting to be mostly without wifi, the aging correction can be useful, but again 1min error per year can be insignificant for many applications (irrigation timer comes to mind). Usually the calculation of the aging setting is hard to measure correctly and seems (according to internet sources) to be temparature dependend (I am not sure about this).
-- For projects really isolated (from the internet) and still requiring high time precision, a GNSS module can be a solution (you have to solve other problems of course) . I have created such a driver for tasmota http://gd. For Toit-lang there is already a GNSS driver https:// TODO (not be me) but I have not tested it.
+- For projects really isolated (from the internet) and still requiring high time precision, a GNSS module can be a solution (you have to solve other problems of course). For Toit-lang there are more than one GNSS drivers, but I have not tested them. I have created such a [driver for tasmota](https://github.com/pkarsy/TasmotaBerryTime/tree/main/ds3231) if you are interested.
 
 ## Developer Hints
-- For all the instructions below you can see the 2 examples to see how they work in practice.
-- The library does not raise exceptions, even on hardware errors (bad cabling for example)
-- The member functions either return directly the error (time set) or return null and the error variable is set with the error (time get).
-- There are parameters not listed in this readme, you can review the source code, is very short anyway, to see what is missing here.
-- 
+- For all the instructions below, you can inspect the examples to see how they work in practice.
+- The library does not raise exceptions, even on hardware errors (bad cabling for example). Instead the member functions either return directly the error (time set) or return null and the error variable is set with the error (time get).
+- There are some parameters not listed in this readme, you can review the source code, is very short anyway, to see what is missing here.
 
 ### Constructor
 We can create the driver instance with 2 ways.
-- If we need the i2c bus for multiple peripherals, we must create the i2c bus object and then we pass it to the constructor.
+- If we need the i2c bus for multiple peripherals, we must create the i2c bus object first, and then we pass it to the constructor.
 - If the DS3231 is the only i2c in the bus (most common case) we can simply pass the pin numbers to the constructor.
 
 ### Setting and getting the time
-The library, just like the ntp library, uses the time-adjustment instead of absolute time.
+This library, just like the esp-idf library and the ntp library, uses the time-adjustment instead of absolute time. This is a clever way to set the time correctly, even if there is a time gap between time-get and time-set
 
 ### SQW pin
-The library does not use/need this pin by itself, but you may find it usefull for other purposes, as interrupt source etc. This library has the following functions to control the SQW output.
+The library does not use/need this pin by itself, but you may find it usefull for other purposes, as interrupt source etc. The following functions can control the SQW output.
+
 ```
 enable-sqw-1hz
 enable-sqw-1kilohz
@@ -67,8 +66,8 @@ disable-sqw
 enable-battery-backed-sqw
 disable-battery-backed-sqw
 ```
-On success they return null, otherwise they return the error as a string
-All settings will stay active as long as the module is battery backed.
+
+DS3232 will retain the register settings as long as the module is active or even battery backed.
 
 ### Temperature
 > get-temperature
@@ -81,18 +80,17 @@ returns the temperature in C.
 shows the expected time drift (assuming 2ppm error) since the last time the clock was set. The real drift is usually smaller, even significantly smaller.
 
 ### ALARM 1/2
-Not implemented, does not seem very useful given that the
-ESP32 can wake up from sleep using its own timer.
+Not implemented, does not seem very useful given that the ESP32 can wake up from sleep using its own timer.
 
 ### Aging correction
-The member function
+
 > set-aging-offset
 
-Can get a value from -128 up to 127 to make the clock more accurate. See
-[this project](https://github.com/gbhug5a/DS3231-Aging-GPS), but most of the time you dont need it.
+Can get a value from -128 up to 127 to make the clock more accurate (much less than 2ppm). See
+[this project](https://github.com/gbhug5a/DS3231-Aging-GPS), on how to measure this offset, but most of the time you dont need it.
 
 
-### Settings not implemented by the driver
+### Chip operations not implemented by the driver
 if you want to make register manipulations you can write for example (asuming the instance is called "rtc")
 
 > rtc.set-value-with-mask --register=0x0e --value=0b0_1_000000 --mask=0x0_1_000000
