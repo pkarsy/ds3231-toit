@@ -9,6 +9,9 @@ import gpio
 import i2c
 import serial
 
+/**
+Control a Ds3231 realtime clock.
+*/
 class Ds3231:
   /**
   The default i2c adress of the DS3231 is 0x68.
@@ -30,7 +33,7 @@ class Ds3231:
     registers=device.registers
 
   /**
-  A simplified version of the constructor, we give the Pin numbers and the serial.Device is created by the constructor
+  A more convenient version of the constructor. We give the Pin numbers and the serial.Device is created by the constructor. We can also give vcc and gnd Pin numbers to power the module. This simplifies the Ds3231 connection, and allows to save power when the ESP32 goes to sleep.
   */
   constructor
       --sda/int
@@ -52,10 +55,13 @@ class Ds3231:
       gpio.Pin gnd --output --value=0
   
   /**
-  Reads the time from the Ds3231 chip
+  Reads the time from the Ds3231 chip.
+  If --wait-sec-change=false the function returns immediatelly but can have up 1 sec time error.
+  if --wait-sec-change=true (the default) the function can block up to 1 sec but the adjustment is accurate to about 1ms.
+  if --allow-wrong-time==true (the default) the time is checked if at least is 2025, otherwise returns error.
   */
-  get --wait-sec-change=true
-      --allow-wrong-time=false 
+  get --wait-sec-change/bool=true
+      --allow-wrong-time/bool=false 
       -> Duration? :
     tstart:=Time.now
     rtctime/Time? := null
@@ -81,9 +87,12 @@ class Ds3231:
     else:
       return adj
 
+  /**
+      Sets the RTC time to Time.now+adjustment. wait-sec-change and allow-wrong-time have the same meanung as the get function.
+  */
   set --adjustment/Duration
-      --wait-sec-change=true
-      --allow-wrong-time=false
+      --wait-sec-change/bool=true
+      --allow-wrong-time/bool=false
       -> string? : // error as string or null
     adjustment += Duration --us=1750 // we compensate for the i2c and MCU delays
     if allow-wrong-time==false and (Time.now + adjustment).utc.year<2025:
@@ -123,15 +132,18 @@ class Ds3231:
     registers.write-u8 REG-START_ 0 // to reset the countdown timer
     registers.write-bytes REG-START_ buf
   
-  // use only if you already have a value for example
-  // The new value will work after the next temp conversion
-  // values are -128 up to 127
-  set-aging-offset val/int -> string? :
+  /**
+  Use an offset for example by following the instructions from
+  https://github.com/gbhug5a/DS3231-Aging-GPS
+  The new value will work after the next temp conversion
+  values are -128 up to 127
+  */
+  set-aging-offset offset/int -> string? :
     aging-register ::= 0x10 // Ds3231 datasheet
-    if (val<-128) or (val>127):
+    if (offset<-128) or (offset>127):
       return "WRONG_AGING_OFFSET"
     err:= catch:
-      registers.write-i8 0x10 val
+      registers.write-i8 0x10 offset
     return err
 
   set-sqw_ value -> string? :
@@ -140,9 +152,11 @@ class Ds3231:
       --mask=0b000_111_00
       --value=value
   
-  // mask is a value with all bits to be changed (and only them) set to 1
-  // value is a byte containing the values 0/1 we want to apply (only the 1s in the mask)
-  // returns null if no error otherwise returns the error as a string
+  /**
+  mask is a value with all bits to be changed (and only them) set to 1
+  value is a byte containing the values 0/1 we want to apply (only the 1s in the mask)
+  returns null if no error otherwise returns the error as a string
+  */
   set-value-with-mask --register/int --mask/int --value/int -> string?:
     if not (0<=register<=0x12 and 0<=mask<=255 and 0<=value<=255):
       return "PARAMETERS_OUT_OF_BOUNDS"
@@ -159,6 +173,7 @@ class Ds3231:
       registers.write-u8 register value-to-apply
     return err
 
+  /** 1 Hz output on the SQW pin. The output is push-pull so no need for pull-up or down */
   enable-sqw-1hz -> string? :
     return set-sqw_ 0b000_000_00 // RS2->0 RS1->0 INTCN->0
   
@@ -174,12 +189,15 @@ class Ds3231:
   disable-sqw -> string? :
     return set-sqw_ 0b000_111_00
   
+  /** be careful pull-up or pull-down can eat precious power from the coin-cell */
   enable-battery-backed-sqw -> string? :
     return set-value-with-mask --register=0x0e --value=0b0_1_000000 --mask=0x0_1_000000
   
+  /** The default */
   disable-battery-backed-sqw -> string? :
     return set-value-with-mask --register=0x0e --value=0b0_0_000000 --mask=0x0_1_000000
   
+  /** In celsious */
   get-temperature -> int? :
     temperature-register := 0x11 // Ds3231 datasheet
     error = catch:
@@ -188,7 +206,9 @@ class Ds3231:
       return t
     return null
 
-  get-drift --ppm/float=2.0 -> Duration?:
+  /** The drift is calculated by assuming a 2ppm error since the last time the clock is set */
+  get-drift --ppm/num=2 -> Duration?:
+    ppm = ppm*1.0 // to be sure is float
     t/Time := Time.now
     if last-set-time_==null:
       error = "THE_TIME_IS_NEVER_WRITTEN_TO_DS3231"
