@@ -2,7 +2,7 @@
 toit driver for the DS3231 real time clock.
 
 ## Warning
-Working with time, especally if there are constrains on the accuracy, is a hard job. At the moment the library has limited testing and bugs are expected. Any help on spotting/fixing the bugs is welcome.
+Working with time, especally if there are constrains on the accuracy, is a hard job. At the moment the library has limited testing and bugs are expected. Any help on inmpoving the driver is welcome.
 
 ## Installing
 > jag pkg install github.com/pkarsy/toit-ds3231
