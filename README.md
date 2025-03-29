@@ -77,6 +77,7 @@ returns the temperature in C.
 
 ### Clock drift
 > get-drift
+
 shows the expected time drift (assuming 2ppm error) since the last time the clock was set. The real drift is usually smaller, even significantly smaller.
 
 ### ALARM 1/2
@@ -107,5 +108,5 @@ does the oposite.
 
 If this is not enough, there is the rtc.registers object for raw manipulation, which is generally ever more error prone than the set-bits function, and basically is bypassing the driver.
 
-### battey powered projects
+### VCC GND and battey powered projects
 On battery, the 4mA the DS3231 is using, is a huge burden. For this specific purpose the VCC and GND can be GPIO pins, and the module is powered OFF when in deep-sleep. Assuming a good CR2032 cell, the time keeping function will stil work.

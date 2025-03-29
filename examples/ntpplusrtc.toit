@@ -1,4 +1,4 @@
-import esp32 show adjust_real_time_clock set-real-time-clock
+import esp32 show adjust_real_time_clock
 import ...ds3231 show Ds3231
 import ntp
 
@@ -12,6 +12,7 @@ import ntp
   rtc := ds3231 device
   //
   // we can use GPIO pins as GND and VCC if we use the DS3231 alone (only 4mA)
+  // this is useful for easy cabling and battery powered projects
   gnd := gpio.Pin 32 --output --value=0
   vcc := gpio.Pin 33 --output --value=1
   //
@@ -19,8 +20,9 @@ import ntp
   setup can be simplified with the following constructor
   if you are using hardware VCC and GND leave the --vcc and --gnd out.
 */
-rtc := Ds3231 --scl=4 --sda=5  /* esp32-c3 luatos core */
-// rtc := Ds3231 --scl=32 --sda=33 --vcc=25 --gnd=26 /* Devkit all versions and some other boards */
+rtc := Ds3231 --scl=4 --sda=5  /* esp32-c3 luatos core Toit-lang rocks with esp32-c3 */
+// See the above comments for the vcc and gnd
+// rtc := Ds3231 --scl=32 --sda=33 --vcc=25 --gnd=26 /* Devkit all versions and some other boards also*/
 
 main:
   task:: update-time // you can use this task for your project
@@ -66,13 +68,14 @@ update-time:
 
 check-time-sync: // for debugging purposes
   sleep --ms=5000
+  print "Do not use this for working projects, tries to demonstrate the drifting of the DS3231 clock, which is minimal and hardly measurable with this test, and the system clock drift wich is larger"
   while true:
-    ntp-result := ntp.synchronize --server="10.5.2.2"
+    ntp-result := ntp.synchronize // --server="your local server IP but usually not needed"
     if ntp-result:
       print "[TEST-START] NTP-time - System-time : $ntp-result.adjustment accuracy=$ntp-result.accuracy"
     rtc-adjustment := rtc.get
     if rtc-adjustment:
-      print "[TEST      ] RTC-time - System-time : $rtc-adjustment. Calculated RTC drift : $rtc.drift"
+      print "[TEST      ] RTC-time - System-time : $rtc-adjustment. Probable RTC drift : $rtc.get-drift"
       if ntp-result:
         print "[TEST-END  ] NTP-time - RTC-time    : $(ntp-result.adjustment - rtc-adjustment)"
     else:
@@ -81,7 +84,7 @@ check-time-sync: // for debugging purposes
 
 check-get-set-accuracy:
   sleep --ms=5000
-  print "#############"
+  print "Do not use this for working projects, it sets and gets back the time from the RTC to demonstrate how accurate the set/get fuctions are"
   while true:
     print "We set the RTC time $Time.now"
     rtc.set --adjustment=(Duration 0)
