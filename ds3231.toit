@@ -13,12 +13,7 @@ class Ds3231:
   static DEFAULT-I2C ::= 0x68 // This is different if we solder A1 A2 A3 pads
   static REG-START_ ::= 0x00  // The first register is at location 0x00
   static REG-NUM_ ::= 7       // and we read 7 consequitive reagisters
-  // The registers variable is public to be used with
-  // the myriad of settings this driver does not cover
   registers/serial.Registers ::= ?
-  // We forward the time a few msec to compensate for the toit virtual
-  // machine ESP32 and i2c delays
-  compensation_ := Duration --ms=8
   error/string? := null
   last-set-time_/Time? := null 
 
@@ -46,6 +41,7 @@ class Ds3231:
   get --wait-sec-change=true
       --allow-wrong-time=false 
       -> Duration? :
+    tstart:=Time.now
     rtctime/Time? := null
     exception := catch:
       if wait-sec-change:
@@ -62,33 +58,31 @@ class Ds3231:
     if rtctime==null:
       error="GET_PROGRAMMING_ERROR"
       return null
+    adj:=Time.now.to rtctime
     if rtctime.utc.year<2025:
       error="DS3231_TIME_IS_INVALID"
       return null
     else:
-      return Time.now.to rtctime
-
+      return adj
 
   set --adjustment/Duration
       --wait-sec-change=true
       --allow-wrong-time=false
       -> string? : // error as string or null
-    time := Time.now + adjustment
-    if allow-wrong-time==false and time.utc.year<2025:
+    adjustment += Duration --us=1750 // we compensate for the i2c and MCU delays
+    if allow-wrong-time==false and (Time.now + adjustment).utc.year<2025:
       return "YEAR_LESS_THAN_2025"
-    if wait-sec-change: // waits until the second changes
-      ms/Duration := Duration --ms = (time.utc.ns/1e6).to-int
-      target-delay/Duration ::= ?
-      if (ms + compensation_)  >= (Duration --ms=995) :
-        target-delay = Duration --ms=2000
-      else:
-        target-delay = Duration --ms=1000
-      delay/Duration ::= target-delay - ms - compensation_
-      time = time + target-delay
-      sleep delay // TODO busy loop may be more accurate
-    exception := catch: this.set_ time
+    t := Time.now + adjustment
+    if wait-sec-change: // wait until the second changes for better accuracy
+      s := t.utc.s
+      while true:
+        yield
+        t = Time.now+adjustment
+        s1 := t.utc.s
+        if s!=s1: break
+    exception := catch: this.set_ Time.now+adjustment
     if exception: return exception //failed to set the RTC, we return a description
-    last-set-time_ = time
+    last-set-time_ = t
     return null // no error
 
   get_ -> Time :
@@ -100,22 +94,22 @@ class Ds3231:
     utc := Time.utc --s=t[0] --m=t[1] --h=t[2] --day=t[4] --month=t[5] --year=2000+t[6]
     return utc
   
-  set_ time/Time -> none :
-    u := time.utc
-    // must be 7 fields, the same as the Ds3231 registers
+  set_ tm/Time -> none :
+    u := tm.utc
+    // must be 7 fields, the same as the Ds3231 time keeping registers
     t := [u.s, u.m, u.h, u.weekday, u.day, u.month, (u.year - 2000)]
-    // We can get this error only by messing with the fields
-    if t.size != REG-NUM_: throw "INCORRECT_ELEMENTS_NUMBER"
+    // We can get this error only by messing with the "t" fields, so not really useful
+    // if t.size != REG-NUM_: throw "INCORRECT_ELEMENTS_NUMBER"
     buf := ByteArray REG-NUM_
     REG-NUM_.repeat:
       buf[it]=int2bcd_ t[it]
     // write-bytes can throw an exception
+    registers.write-u8 REG-START_ 0 // to reset the countdown timer
     registers.write-bytes REG-START_ buf
   
   // use only if you already have a value for example
-  // using TODO
   // The new value will work after the next temp conversion
-  // values are -128 up to 127 (an 8 bit signed number)
+  // values are -128 up to 127
   set-aging-offset val/int -> string? :
     aging-register ::= 0x10 // Ds3231 datasheet
     if (val<-128) or (val>127):
@@ -132,7 +126,7 @@ class Ds3231:
   
   // mask is a value with all bits to be changed (and only them) set to 1
   // value is a byte containing the values 0/1 we want to apply (only the 1s in the mask)
-  // returns null if no error or the error as string
+  // returns null if no error otherwise returns the error as a string
   set-value-with-mask --register/int --mask/int --value/int -> string?:
     if not (0<=register<=0x12 and 0<=mask<=255 and 0<=value<=255):
       return "PARAMETERS_OUT_OF_BOUNDS"
@@ -149,9 +143,8 @@ class Ds3231:
       registers.write-u8 register value-to-apply
     return err
 
-  // TThe library does not use the SQW pin but you may want it for other purposes
   enable-sqw-1hz -> string? :
-    return set-sqw_ 0b000_000_00 // RS2->0 RS1->0 INTCN->0 0b000_000_00 is the same
+    return set-sqw_ 0b000_000_00 // RS2->0 RS1->0 INTCN->0
   
   enable-sqw-1kilohz -> string?:
     return set-sqw_ 0b000_010_00
@@ -171,11 +164,11 @@ class Ds3231:
   disable-battery-backed-sqw -> string? :
     return set-value-with-mask --register=0x0e --value=0b0_0_000000 --mask=0x0_1_000000
   
-  
   temperature -> int? :
-    control-register := 0x11 // Ds3231 datasheet
+    temperature-register := 0x11 // Ds3231 datasheet
     error = catch:
-      t := registers.read-i8 control-register
+      // the value is stored as a 8-bit 2-complement number, and read-i8 reads exactly this
+      t := registers.read-i8 temperature-register
       return t
     return null
 
@@ -186,16 +179,6 @@ class Ds3231:
       return null
     return (last-set-time_.to t)*ppm/1e6
     
-
-  // has nothing to do with RTC registers. It just tries to
-  // compensate for the inaccuracies of the bus and MCU finite speed
-  // the default is usually OK
-  set-compensation comp/Duration:
-    compensation_ = comp
-  
-  get-compensation -> Duration:
-    return compensation_
-  
   // Date/Time is stored to the registers in BCD
   static int2bcd_ x/int -> int:
     return (x/10)*16+(x%10)

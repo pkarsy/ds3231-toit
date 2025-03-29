@@ -1,12 +1,15 @@
 import esp32 show adjust_real_time_clock
 import ...ds3231 show Ds3231
 
-// Only RTC is available, no wifi. The DS3231 can be off 1-2min/year
-// but for many applications this is OK, for example irrigation
+// Only RTC is available, no wifi. The DS3231 can be off 1min/year
+// but for many applications this is OK.
+// If there is Wifi, even rarelly your mobile phone as hotspot
+// you should check the "ntpplusrtc.toit" example.
 
 // The following configurations are for convenience (the pins are in the same order)
-// you are free to use any pin that is allowed by the board or the ESP chip
-// read the board's documentation for the allowed pins
+// you are free to use any pin that is allowed by the board or the ESP chip.
+// Read the board's documentation on the pins you can use. Straping and special purpose pins
+// should be avoided
 rtc ::= Ds3231 --sda=5 --scl=4 // /* esp32-c3 luatos core (with and without serial chip) */
 // rtc := Ds3231 --sda=25 --scl=26 --vcc=33 --gnd=32 /* Lolin32 lite */
 // rtc := Ds3231 --sda=33 --scl=32 --vcc=25 --gnd=26 /* ESP32 Devkit all versions */
@@ -29,12 +32,13 @@ main-job: // does not return, we need to call it with task::
 
 update-system-time: // does not return, we need to call it with task::
   while true:
-    result := rtc.get
-    if result.error: print "Cannot get the RTC time : $result.error"
-    else:
+    adjustment := rtc.get
+    if adjustment:
       // The Ds3231 crystal is way more accurate than the crystal on the ESP32 board
       // and also is temperature compensated.
       // So is better once per hour to refresh the system time
-      adjust_real_time_clock result.adjustment
-      print "Got system time from RTC : adjustment=$result.adjustment"
+      adjust_real_time_clock adjustment
+      print "Got system time from RTC : adjustment=$adjustment"
+    else:
+      print "Cannot get the RTC time : $rtc.error"
     sleep (Duration --h=1)
