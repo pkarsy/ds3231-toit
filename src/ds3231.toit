@@ -35,6 +35,7 @@ class Ds3231:
   constructor
       --sda/int
       --scl/int
+      /** If >=0 uses the GPIO pin as VCC */
       --vcc/int=-1
       --gnd/int=-1
       --addr/int=-1 :
