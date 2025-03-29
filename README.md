@@ -88,11 +88,8 @@ ESP32 can wake up from sleep using its own timer.
 The member function
 > set-aging-offset
 
-Can get a value -128 up to 127 to make the clock more accurate. See
-
-https://github.com/gbhug5a/DS3231-Aging-GPS
-
-but most of the time you dont need it.
+Can get a value from -128 up to 127 to make the clock more accurate. See
+[this project](https://github.com/gbhug5a/DS3231-Aging-GPS), but most of the time you dont need it.
 
 
 ### Settings not implemented by the driver
