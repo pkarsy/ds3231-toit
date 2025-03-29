@@ -1,8 +1,5 @@
 /**
-Toit Driver for the DS3231 Real Time Clock
-C Panagiotis Karagiannis
-MIT Licence
-URL todo
+  Toit driver for the DS3231 Real Time Clock
 */
 
 import gpio
@@ -10,15 +7,15 @@ import i2c
 import serial
 
 /**
-Control a Ds3231 realtime clock.
+  Toit driver for the DS3231 Real Time Clock
 */
 class Ds3231:
   /**
-  The default i2c adress of the DS3231 is 0x68.
+    The default i2c adress of the DS3231 is 0x68.
   */
   static DEFAULT-I2C ::= 0x68 // This is different if we solder A1 A2 A3 pads
   /**
-  The time register (seconds) of DS3231 starts at address 0
+    The time register (seconds) of DS3231 starts at address 0
   */
   static REG-START_ ::= 0x00  // The first register is at location 0x00
   static REG-NUM_ ::= 7       // and we read 7 consequitive reagisters
@@ -27,13 +24,13 @@ class Ds3231:
   last-set-time_/Time? := null 
 
   /**
-  Creates a Ds3231 instance, and requires a serial.Device object
+    Creates a Ds3231 instance, and requires a serial.Device object
   */
   constructor --device/serial.Device :
     registers=device.registers
 
   /**
-  A more convenient version of the constructor. We give the Pin numbers and the serial.Device is created by the constructor. We can also give vcc and gnd Pin numbers to power the module. This simplifies the Ds3231 connection, and allows to save power when the ESP32 goes to sleep.
+    A more convenient version of the constructor. We give the Pin numbers and the serial.Device is created by the constructor. We can also give vcc and gnd Pin numbers to power the module. This simplifies the Ds3231 connection, and allows to save power when the ESP32 goes to sleep.
   */
   constructor
       --sda/int
@@ -55,10 +52,10 @@ class Ds3231:
       gpio.Pin gnd --output --value=0
   
   /**
-  Reads the time from the Ds3231 chip.
-  If --wait-sec-change=false the function returns immediatelly but can have up 1 sec time error.
-  if --wait-sec-change=true (the default) the function can block up to 1 sec but the adjustment is accurate to about 1ms.
-  if --allow-wrong-time==true (the default) the time is checked if at least is 2025, otherwise returns error.
+    Reads the time from the Ds3231 chip.
+    If --wait-sec-change=false the function returns immediatelly but can have up 1 sec time error.
+    if --wait-sec-change=true (the default) the function can block up to 1 sec but the adjustment is accurate to about 1ms.
+    if --allow-wrong-time==true (the default) the time is checked if at least is 2025, otherwise returns error.
   */
   get --wait-sec-change/bool=true
       --allow-wrong-time/bool=false 
@@ -88,7 +85,7 @@ class Ds3231:
       return adj
 
   /**
-      Sets the RTC time to Time.now+adjustment. wait-sec-change and allow-wrong-time have the same meanung as the get function.
+    Sets the RTC time to Time.now+adjustment. The wait-sec-change and allow-wrong-time have the same meaning as the get function.
   */
   set --adjustment/Duration
       --wait-sec-change/bool=true
@@ -133,10 +130,10 @@ class Ds3231:
     registers.write-bytes REG-START_ buf
   
   /**
-  Use an offset for example by following the instructions from
-  https://github.com/gbhug5a/DS3231-Aging-GPS
-  The new value will work after the next temp conversion
-  values are -128 up to 127
+    The offset can me measured by following the instructions from
+    https://github.com/gbhug5a/DS3231-Aging-GPS
+    The new value will work after the next temp conversion
+    values are -128 up to 127
   */
   set-aging-offset offset/int -> string? :
     aging-register ::= 0x10 // Ds3231 datasheet
@@ -153,9 +150,9 @@ class Ds3231:
       --value=value
   
   /**
-  mask is a value with all bits to be changed (and only them) set to 1
-  value is a byte containing the values 0/1 we want to apply (only the 1s in the mask)
-  returns null if no error otherwise returns the error as a string
+    mask is a value with all bits to be changed (and only them) set to 1
+    value is a byte containing the values 0/1 we want to apply (only the 1s in the mask)
+    returns null if no error otherwise returns the error as a string
   */
   set-value-with-mask --register/int --mask/int --value/int -> string?:
     if not (0<=register<=0x12 and 0<=mask<=255 and 0<=value<=255):
@@ -173,7 +170,9 @@ class Ds3231:
       registers.write-u8 register value-to-apply
     return err
 
-  /** 1 Hz output on the SQW pin. The output is push-pull so no need for pull-up or down */
+  /**
+    1 Hz output on the SQW pin. The output is push-pull so no need for pull-up or down
+  */
   enable-sqw-1hz -> string? :
     return set-sqw_ 0b000_000_00 // RS2->0 RS1->0 INTCN->0
   
@@ -189,11 +188,11 @@ class Ds3231:
   disable-sqw -> string? :
     return set-sqw_ 0b000_111_00
   
-  /** be careful pull-up or pull-down can eat precious power from the coin-cell */
+  /** be careful pull-up or pull-down is not only unnecesary but can eat precious power from the coin-cell */
   enable-battery-backed-sqw -> string? :
     return set-value-with-mask --register=0x0e --value=0b0_1_000000 --mask=0x0_1_000000
   
-  /** The default */
+  /** This is the default DS3231 setting */
   disable-battery-backed-sqw -> string? :
     return set-value-with-mask --register=0x0e --value=0b0_0_000000 --mask=0x0_1_000000
   
@@ -215,7 +214,7 @@ class Ds3231:
       return null
     return (last-set-time_.to t)*ppm/1e6
     
-  // Date/Time is stored to the registers in BCD
+  /** Date/Time is stored to the DS3231 registers as BCD */
   static int2bcd_ x/int -> int:
     return (x/10)*16+(x%10)
   
