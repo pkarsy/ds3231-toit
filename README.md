@@ -12,7 +12,7 @@ We need 4 pins:
 
 > SCL SDA VCC GND
 
-The popular blue DS3231 boards (and I think all boards, check the documentation) do not have level conversion circuitry. So the VCC pin should be connected to 3.3V. The current the breakout is consuming is minimal, and for this reason we can even use GPIO pins for the VCC and GND. See the examples.
+The popular blue DS3231 boards (and I think all boards, check the documentation) do not have level conversion circuitry. So the VCC pin should be connected to 3.3V. The current the breakout is consuming is minimal, and we can even use GPIO pins for the VCC and GND. See the examples.
 
 ## RTC Coin Cell
 Note: We speak about the pupular blue breakout DS3231 board, with the primitive diode charging circuit.
@@ -31,7 +31,7 @@ We can expect Time to be set and get with a less than 1-2ms error, but this in n
 
 The above values are more or less the worst cases, unless you expose the module to extreme temperatures. (See the Aging Correction below)
 
-If the project can have internet access (even occasionally, for example a mobile phone as access point) the time could be fixed using NTP. There is the "ntpplusrtc.toit" doing this, in the examples folder.
+If the project can have internet access (even occasionally, for example a mobile phone as access point) the time could be fixed using NTP. See the "ntp-plus-rtc.toit" exanple.
 
 The crystal of the ESP32 board normally has much worse performance than the TCXO crystal of the Ds3231, so it makes sense (when not using NTP) to update the system (ESP32) time every hour using the DS3231 time. See the example "nowifi.toit" for this.
 
