@@ -10,16 +10,28 @@ import i2c
 import serial
 
 class Ds3231:
+  /**
+  The default i2c adress of the DS3231 is 0x68.
+  */
   static DEFAULT-I2C ::= 0x68 // This is different if we solder A1 A2 A3 pads
+  /**
+  The time register (seconds) of DS3231 starts at address 0
+  */
   static REG-START_ ::= 0x00  // The first register is at location 0x00
   static REG-NUM_ ::= 7       // and we read 7 consequitive reagisters
   registers/serial.Registers ::= ?
   error/string? := null
   last-set-time_/Time? := null 
 
+  /**
+  Creates a Ds3231 instance, and requires a serial.Device object
+  */
   constructor --device/serial.Device :
     registers=device.registers
 
+  /**
+  A simplified version of the constructor, we give the Pin numbers and the serial.Device is created by the constructor
+  */
   constructor
       --sda/int
       --scl/int
@@ -38,6 +50,9 @@ class Ds3231:
     if gnd >= 0:
       gpio.Pin gnd --output --value=0
   
+  /**
+  Reads the time from the Ds3231 chip
+  */
   get --wait-sec-change=true
       --allow-wrong-time=false 
       -> Duration? :
