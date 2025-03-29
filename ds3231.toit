@@ -164,7 +164,7 @@ class Ds3231:
   disable-battery-backed-sqw -> string? :
     return set-value-with-mask --register=0x0e --value=0b0_0_000000 --mask=0x0_1_000000
   
-  temperature -> int? :
+  get-temperature -> int? :
     temperature-register := 0x11 // Ds3231 datasheet
     error = catch:
       // the value is stored as a 8-bit 2-complement number, and read-i8 reads exactly this
@@ -172,7 +172,7 @@ class Ds3231:
       return t
     return null
 
-  drift --ppm/float=2.0 -> Duration?:
+  get-drift --ppm/float=2.0 -> Duration?:
     t/Time := Time.now
     if last-set-time_==null:
       error = "THE_TIME_IS_NEVER_WRITTEN_TO_DS3231"
