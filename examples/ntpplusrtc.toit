@@ -1,5 +1,5 @@
 import esp32 show adjust_real_time_clock
-import ...ds3231 show Ds3231
+import ds3231 show Ds3231
 import ntp
 
 // we have both wifi and DS3231 and we want the RTC

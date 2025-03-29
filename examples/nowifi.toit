@@ -1,5 +1,5 @@
 import esp32 show adjust_real_time_clock
-import ...ds3231 show Ds3231
+import ds3231 show Ds3231
 
 // Only RTC is available, no wifi. The DS3231 can be off 1min/year
 // but for many applications this is OK.
