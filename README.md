@@ -4,8 +4,8 @@ toit driver for the DS3231 real time clock.
 ## Warning
 Working with time, especally if there are constrains on the accuracy, is a hard job. At the moment the library has limited testing and bugs are expected. Any help on inmpoving the driver is welcome.
 
-## Installing
-> jag pkg install github.com/pkarsy/toit-ds3231
+## Installing + documentation
+Go to [ds3231 at Toid package registry](https://pkg.toit.io/search?query=ds3231)
 
 ## Connection
 We need 4 pins:
@@ -75,7 +75,7 @@ DS3232 will retain the register settings as long as the module is active or even
 returns the temperature in °C. Internally is updated every about 1 min (SN model).
 
 ### Clock drift
-> get-drift
+> expected-drift
 
 shows the expected time drift (assuming 2ppm error) since the last time the clock was set. The real drift is usually smaller. You can set the ppm error.
 

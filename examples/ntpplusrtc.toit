@@ -86,7 +86,7 @@ check-time-sync: // for debugging purposes
       print "[TEST-START] NTP-time - System-time : $ntp-result.adjustment accuracy=$ntp-result.accuracy"
     rtc-result := rtc.get
     if rtc-result.adjustment:
-      print "[TEST      ] RTC-time - System-time : $rtc-result.adjustment. Possible RTC drift : $rtc.rtc-drift"
+      print "[TEST      ] RTC-time - System-time : $rtc-result.adjustment. Possible RTC drift : $rtc.expected-drift"
       if ntp-result:
         print "[TEST-END  ] NTP-time - RTC-time    : $(ntp-result.adjustment - rtc-result.adjustment)"
     else:
