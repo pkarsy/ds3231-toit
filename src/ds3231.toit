@@ -24,7 +24,7 @@ class Ds3231:
   last-set-time_/Time? := null 
 
   /**
-    Creates a Ds3231 instance, and requires a serial.Device object
+    Creates a Ds3231 instance, given a serial.Device object
   */
   constructor --device/serial.Device :
     registers=device.registers
