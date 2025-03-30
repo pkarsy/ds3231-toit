@@ -6,6 +6,21 @@ import gpio
 import i2c
 import serial
 
+class Error:
+  error/string ::= ?
+  constructor .error:
+  stringify:
+    return error
+  operator == other:
+    return identical error other
+
+class Result:
+  adjustment/Duration? ::= ?
+  error/string? ::= ?
+  constructor .adjustment .error:
+  stringify:
+    return "{\"Time\":$adjustment,\" Error\":$error}"
+
 /**
   Toit driver for the DS3231 Real Time Clock
 */
@@ -20,7 +35,7 @@ class Ds3231:
   static REG-START_ ::= 0x00  // The first register is at location 0x00
   static REG-NUM_ ::= 7       // and we read 7 consequitive reagisters
   registers/serial.Registers ::= ?
-  error/string? := null
+  //error/string? := null
   last-set-time_/Time? := null 
 
   /**
@@ -59,10 +74,10 @@ class Ds3231:
   */
   get --wait-sec-change/bool = true
       --allow-wrong-time/bool = false 
-      -> Duration? :
+      -> Result :
     tstart := Time.now
     rtctime/Time? := null
-    error = catch:
+    error := catch:
       if wait-sec-change:
         v := registers.read-u8 REG-START_
         while true:
@@ -72,17 +87,17 @@ class Ds3231:
             break
       rtctime = this.get_
     if error:
-      return null
+      return (Result null error)
     if rtctime == null:
       error="GET_PROGRAMMING_ERROR"
-      return null
+      return (Result null error)
     adjustment := Time.now.to rtctime
     if rtctime.utc.year<2025:
-      error="DS3231_TIME_IS_INVALID"
-      return null
+      //error=
+      return (Result null "DS3231_TIME_IS_INVALID")
     else:
       error = null
-      return adjustment
+      return (Result adjustment null)
 
   /**
     Sets the RTC time to Time.now+adjustment. The wait-sec-change and allow-wrong-time have the same meaning as the get function. On success returns null otherwise returns the error.
@@ -90,11 +105,11 @@ class Ds3231:
   set --adjustment/Duration
       --wait-sec-change/bool=true
       --allow-wrong-time/bool=false
-      -> string? : // error as string or null
+      -> Error? : // error as string or null
     adjustment += Duration --us=1750 // we compensate for the i2c and MCU delays
     if allow-wrong-time==false and (Time.now + adjustment).utc.year<2025:
-      error = "YEAR_LESS_THAN_2025"
-      return error
+      error := "YEAR_LESS_THAN_2025"
+      return (Error error)
     t := Time.now + adjustment
     if wait-sec-change: // wait until the second changes for better accuracy
       s := t.utc.s
@@ -103,10 +118,10 @@ class Ds3231:
         t = Time.now + adjustment
         s1 := t.utc.s
         if s!=s1: break
-    error = catch: this.set_ Time.now + adjustment
+    error/string? := catch: this.set_ Time.now + adjustment
     if error:
       //this.error = exception
-      return error //failed to set the RTC, we return a description
+      return (Error error) //failed to set the RTC, we return a description
     // no error happened
     last-set-time_ = t
     return null // no error
@@ -139,15 +154,15 @@ class Ds3231:
     The new value will work after the next temp conversion
     values are -128 up to 127
   */
-  set-aging-offset offset/int -> string? :
+  set-aging-offset offset/int -> Error? :
     aging-register ::= 0x10 // Ds3231 datasheet
     if (offset<-128) or (offset>127):
-      return "WRONG_AGING_OFFSET"
-    error = catch:
+      return (Error "WRONG_AGING_OFFSET")
+    error/string? := catch:
       registers.write-i8 0x10 offset
-    return error
+    return (Error error)
 
-  set-sqw_ value -> string? :
+  set-sqw_ value -> Error? :
     return set-value-with-mask
       --register=0x0e
       --mask=0b000_111_00
@@ -158,66 +173,69 @@ class Ds3231:
     value is a byte containing the values 0/1 we want to apply (only the 1s in the mask)
     returns null if no error otherwise returns the error as a string
   */
-  set-value-with-mask --register/int --mask/int --value/int -> string?:
+  set-value-with-mask --register/int --mask/int --value/int -> Error?:
     if not (0<=register<=0x12 and 0<=mask<=255 and 0<=value<=255):
-      return "PARAMETERS_OUT_OF_BOUNDS"
+      return Error "PARAMETERS_OUT_OF_BOUNDS"
     new-value := value
     old-value/int? := null
-    error = catch:
+    error/string? := catch:
       old-value = registers.read-u8 register
     if error:
-      return error
+      return (Error error)
     if old-value==null:
       error = "SET-VALUE-PROGRAMMING-ERROR"
-      return error
+      return Error error
     value-to-apply := (old-value & ~mask) | (new-value & mask)
     error = catch:
       registers.write-u8 register value-to-apply
-    return error
+    if error:
+      return Error error
+    else:
+      return null
 
   /**
     1 Hz output on the SQW pin. The output is push-pull so no need for pull-up or down
   */
-  enable-sqw-1hz -> string? :
+  enable-sqw-1hz -> Error? :
     return set-sqw_ 0b000_000_00 // RS2->0 RS1->0 INTCN->0
   
-  enable-sqw-1kilohz -> string?:
+  enable-sqw-1kilohz -> Error?:
     return set-sqw_ 0b000_010_00
   
-  enable-sqw-4kilohz -> string? :
+  enable-sqw-4kilohz -> Error? :
     return set-sqw_ 0b000_100_00
   
-  enable-sqw-8kilohz -> string? :
+  enable-sqw-8kilohz -> Error? :
     return set-sqw_ 0b000_110_00
   
-  disable-sqw -> string? :
+  disable-sqw -> Error? :
     return set-sqw_ 0b000_111_00
   
   /** Not a good idea generally. Be especially careful that do not connect (or software enable) pull-up or pull-down. Is not necesary, and will eat precious power from the coin-cell */
-  enable-battery-backed-sqw -> string? :
+  enable-battery-backed-sqw -> Error? :
     return set-value-with-mask --register=0x0e --value=0b0_1_000000 --mask=0x0_1_000000
   
   /** This is the default DS3231 setting */
-  disable-battery-backed-sqw -> string? :
+  disable-battery-backed-sqw -> Error? :
     return set-value-with-mask --register=0x0e --value=0b0_0_000000 --mask=0x0_1_000000
   
   /** In celsious */
   get-temperature -> int? :
     temperature-register := 0x11 // Ds3231 datasheet
-    error = catch:
+    error := catch:
       // the value is stored as a 8-bit 2-complement number, and read-i8 reads exactly this
       t := registers.read-i8 temperature-register
       return t
     return null
 
   /** The drift is calculated by assuming a 2ppm error since the last time the clock is set */
-  get-drift --ppm/num=2 -> Duration?:
+  get-drift --ppm/num=2 -> Result:
     ppm = ppm*1.0 // to be sure is float
     t/Time := Time.now
     if last-set-time_==null:
-      error = "THE_TIME_IS_NEVER_WRITTEN_TO_DS3231"
-      return null
-    return (last-set-time_.to t)*ppm/1e6
+      error := "THE_TIME_IS_NEVER_WRITTEN_TO_DS3231"
+      return Result null error
+    return Result (last-set-time_.to t)*ppm/1e6 null
     
   /** Date/Time is stored to the DS3231 registers as BCD */
   static int2bcd_ x/int -> int:

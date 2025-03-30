@@ -5,4 +5,4 @@ environment:
 dependencies:
   ds3231:
     url: github.com/pkarsy/toit-ds3231
-    version: ^0.8.1
+    version: ^0.8.2

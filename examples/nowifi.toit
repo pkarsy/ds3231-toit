@@ -10,9 +10,10 @@ import ds3231 show Ds3231
 // you are free to use any pin that is allowed by the board or the ESP chip.
 // Read the board's documentation on the pins you can use. Straping and special purpose pins
 // should be avoided
-rtc ::= Ds3231 --sda=5 --scl=4 // /* esp32-c3 luatos core (with and without serial chip) */
+// rtc ::= Ds3231 --scl=4 --sda=5 // /* esp32-c3 luatos core (with and without serial chip) */
+// rtc ::= Ds3231 --scl=7 --sda=6 --vcc=10 --gnd=3 /* esp32-c3 core with GPIO as vcc and gnd */
 // rtc := Ds3231 --sda=25 --scl=26 --vcc=33 --gnd=32 /* Lolin32 lite */
-// rtc := Ds3231 --sda=33 --scl=32 --vcc=25 --gnd=26 /* ESP32 Devkit all versions */
+rtc := Ds3231 --sda=33 --scl=32 --vcc=25 --gnd=26 /* ESP32 Devkit all versions */
 // rtc := Ds3231 --sda=35 --scl=36 --vcc=37 --gnd=38 /* S3 devkitC abudance of pins here */
 
 main:
@@ -32,13 +33,13 @@ main-job: // does not return, we need to call it with task::
 
 update-system-time: // does not return, we need to call it with task::
   while true:
-    adjustment := rtc.get
-    if adjustment:
+    result := rtc.get
+    if result.adjustment:
       // The Ds3231 crystal is way more accurate than the crystal on the ESP32 board
       // and also is temperature compensated.
       // So is better once per hour to refresh the system time
-      adjust_real_time_clock adjustment
-      print "Got system time from RTC : adjustment=$adjustment"
+      adjust_real_time_clock result.adjustment
+      print "Got system time from RTC : adjustment=$result.adjustment"
     else:
-      print "Cannot get the RTC time : $rtc.error"
+      print "Cannot get the RTC time : $result.error"
     sleep (Duration --h=1)
