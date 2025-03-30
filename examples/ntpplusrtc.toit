@@ -35,9 +35,10 @@ rtc := Ds3231 --sda=33 --scl=32 --vcc=25 --gnd=26 /* ESP32 Devkit all versions *
 // rtc := Ds3231 --sda=35 --scl=36 --vcc=37 --gnd=38 /* S3 devkitC abudance of pins here */
 
 main:
-  task:: update-time // you can use this task for your project
+  task:: update-time // This task is doing the time sync
   task:: check-time-sync // for debugging
   //task:: check-get-set-accuracy // for debugging
+  //task :: my-project
 
 // This task is using the most appropriate time source :
 // If internet is working, it uses NTP (and updates the RTC),
@@ -78,14 +79,14 @@ update-time:
 
 check-time-sync: // for debugging purposes
   sleep --ms=5000
-  print "Do not use this for working projects, tries to demonstrate the system clock drift and the DS3231 clock drift, which is minimal and hardly measurable with this test, anless you leave running for at least half a day."
+  print "Do not use this for working projects, tries to demonstrate the system clock drift and the DS3231 clock drift, which is minimal and hardly measurable with this test, unless you leave running for at least a day."
   while true:
     ntp-result := ntp.synchronize // --server="your local server IP but usually not needed"
     if ntp-result:
       print "[TEST-START] NTP-time - System-time : $ntp-result.adjustment accuracy=$ntp-result.accuracy"
     rtc-result := rtc.get
     if rtc-result.adjustment:
-      print "[TEST      ] RTC-time - System-time : $rtc-result.adjustment. Possible RTC drift : $rtc.get-drift"
+      print "[TEST      ] RTC-time - System-time : $rtc-result.adjustment. Possible RTC drift : $rtc.rtc-drift"
       if ntp-result:
         print "[TEST-END  ] NTP-time - RTC-time    : $(ntp-result.adjustment - rtc-result.adjustment)"
     else:

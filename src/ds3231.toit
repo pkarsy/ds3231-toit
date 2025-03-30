@@ -6,6 +6,10 @@ import gpio
 import i2c
 import serial
 
+/**
+A string with an error message.
+All library functions that do not return a value, in fact return null or an Error object
+*/
 class Error:
   error/string ::= ?
   constructor .error:
@@ -14,6 +18,12 @@ class Error:
   operator == other:
     return identical error other
 
+/**
+Contains 2 fiels :
+- adjustment(Duration or null)
+- error(string or null)
+It is the result of the get function
+*/
 class Result:
   adjustment/Duration? ::= ?
   error/string? ::= ?
@@ -26,16 +36,15 @@ class Result:
 */
 class Ds3231:
   /**
-    The default i2c adress of the DS3231 is 0x68.
+    The default i2c adress of the DS3231 is 0x68. However you can change the i2c address with A0 A1 A2 pins/pads
   */
-  static DEFAULT-I2C ::= 0x68 // This is different if we solder A1 A2 A3 pads
-  /**
-    The time register (seconds) of DS3231 starts at address 0
-  */
+  static DEFAULT-I2C ::= 0x68
   static REG-START_ ::= 0x00  // The first register is at location 0x00
   static REG-NUM_ ::= 7       // and we read 7 consequitive reagisters
+  /**
+  For direct register read/write. A little more friendly is the "set-value-with-mask" function
+  */
   registers/serial.Registers ::= ?
-  //error/string? := null
   last-set-time_/Time? := null 
 
   /**
@@ -93,7 +102,6 @@ class Ds3231:
       return (Result null error)
     adjustment := Time.now.to rtctime
     if rtctime.utc.year<2025:
-      //error=
       return (Result null "DS3231_TIME_IS_INVALID")
     else:
       error = null
@@ -120,7 +128,6 @@ class Ds3231:
         if s!=s1: break
     error/string? := catch: this.set_ Time.now + adjustment
     if error:
-      //this.error = exception
       return (Error error) //failed to set the RTC, we return a description
     // no error happened
     last-set-time_ = t
@@ -194,7 +201,7 @@ class Ds3231:
       return null
 
   /**
-    1 Hz output on the SQW pin. The output is push-pull so no need for pull-up or down
+    1 Hz output on the SQW pin. The output is push-pull so no need for pull-up or pull-down.
   */
   enable-sqw-1hz -> Error? :
     return set-sqw_ 0b000_000_00 // RS2->0 RS1->0 INTCN->0
@@ -211,7 +218,7 @@ class Ds3231:
   disable-sqw -> Error? :
     return set-sqw_ 0b000_111_00
   
-  /** Not a good idea generally. Be especially careful that do not connect (or software enable) pull-up or pull-down. Is not necesary, and will eat precious power from the coin-cell */
+  /** Not a good idea generally. Be especially careful that do not connect (or software enable) pull-up or pull-down. Is not necesary, and will eat precious energy from the coin-cell */
   enable-battery-backed-sqw -> Error? :
     return set-value-with-mask --register=0x0e --value=0b0_1_000000 --mask=0x0_1_000000
   
@@ -229,13 +236,12 @@ class Ds3231:
     return null
 
   /** The drift is calculated by assuming a 2ppm error since the last time the clock is set */
-  get-drift --ppm/num=2 -> Result:
-    ppm = ppm*1.0 // to be sure is float
+  expected-drift --ppm/num=2 -> Duration?:
+    ppm = ppm * 1.0 // to be sure is float
     t/Time := Time.now
     if last-set-time_==null:
-      error := "THE_TIME_IS_NEVER_WRITTEN_TO_DS3231"
-      return Result null error
-    return Result (last-set-time_.to t)*ppm/1e6 null
+      return null
+    return (last-set-time_.to t)*ppm/1e6
     
   /** Date/Time is stored to the DS3231 registers as BCD */
   static int2bcd_ x/int -> int:
