@@ -42,9 +42,9 @@ All the above are only useful if you know the wanted accuracy. Some hints:
 - For projects really isolated (from the internet) and still requiring high time precision, a GNSS module can be a solution (you have to solve other problems of course). For Toit-lang there are more than one GNSS drivers, but I have not tested them. I have created such a [driver for tasmota](https://github.com/pkarsy/TasmotaBerryTime/tree/main/ds3231) if you are interested.
 
 ## Developer Hints
-- For all the instructions below, you can inspect the examples to see how they work in practice.
+- library documentation at [ds3231 toit registry](https://pkg.toit.io/github.com/pkarsy/toit-ds3231@0.8.2/docs/)
+- Inspect the examples to see how they work in practice.
 - The library does not raise exceptions, even on hardware errors (bad cabling for example). Instead the member functions either return directly the error (time set) or return null and the error variable is set with the error (time get).
-- There are some parameters not listed in this readme, you can review the source code, is very short anyway, to see what is missing here.
 
 ### Constructor
 We can create the driver instance with 2 ways.
@@ -72,15 +72,15 @@ DS3232 will retain the register settings as long as the module is active or even
 ### Temperature
 > get-temperature
 
-returns the temperature in C.
+returns the temperature in °C.
 
 ### Clock drift
 > get-drift
 
-shows the expected time drift (assuming 2ppm error) since the last time the clock was set. The real drift is usually smaller, even significantly smaller.
+shows the expected time drift (assuming 2ppm error) since the last time the clock was set. The real drift is usually smaller. You can set the ppm error.
 
 ### ALARM 1/2
-Not implemented, does not seem very useful given that the ESP32 can wake up from sleep using its own timer.
+Not implemented at the moment.
 
 ### Aging correction
 
@@ -101,7 +101,7 @@ sets only the bit-6 of the register 0x0E and enables battery backed SQW (Already
 
 does the oposite.
 
-If this is not enough, there is the rtc.registers object for raw manipulation, which is generally ever more error prone than the set-bits function, and basically is bypassing the driver.
+If this is not enough, there is the rtc.registers object for raw manipulation, which is generally ever more error prone than the set-bits-with-mask function.
 
 ### VCC GND and battey powered projects
-On battery, the 4mA the DS3231 is using, is a huge burden. For this specific purpose the VCC and GND can be GPIO pins, and the module is powered OFF when in deep-sleep. Assuming a good CR2032 cell, the time keeping function will stil work.
+On battery, the 4mA the DS3231 is using, is a huge consumption. For this specific purpose the VCC and GND can be GPIO pins, and the DS3231 module is powered OFF when in deep-sleep. Assuming a good CR2032 coin cell, the time keeping function will stil work.

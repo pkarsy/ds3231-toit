@@ -30,39 +30,38 @@ class Ds3231:
     registers=device.registers
 
   /**
-    A more convenient version of the constructor. We give the Pin numbers and the serial.Device is created by the constructor. We can also give vcc and gnd Pin numbers to power the module. This simplifies the Ds3231 connection, and allows to save power when the ESP32 goes to sleep.
+    A simplified version of the constructor.
+    We give the Pin numbers and the serial.Device is created by the constructor.
+    We can also give vcc and gnd pin numbers, so we can power the module with theese gpio pins. This simplifies the Ds3231 connection, and allows to save power when the ESP32 goes to sleep.
   */
   constructor
       --sda/int
       --scl/int
-      /** If >=0 uses the GPIO pin as VCC */
-      --vcc/int=-1
-      --gnd/int=-1
-      --addr/int=-1 :
+      --vcc/int? = null
+      --gnd/int? = null
+      --addr/int=DEFAULT-I2C :
     bus := i2c.Bus
       --sda = gpio.Pin sda
       --scl = gpio.Pin scl
-    if addr==-1:
-      addr = Ds3231.DEFAULT-I2C
     device := bus.device addr
     registers = device.registers
-    if vcc >= 0:
+    if (vcc != null) and (vcc >= 0) :
       gpio.Pin vcc --output --value=1
-    if gnd >= 0:
+    if (gnd != null) and (gnd >= 0):
       gpio.Pin gnd --output --value=0
   
   /**
     Reads the time from the Ds3231 chip.
-    If --wait-sec-change=false the function returns immediatelly but can have up 1 sec time error.
-    if --wait-sec-change=true (the default) the function can block up to 1 sec but the adjustment is accurate to about 1ms.
-    if --allow-wrong-time==true (the default) the time is checked if at least is 2025, otherwise returns error.
+    If wait-sec-change==false the function returns immediatelly but can have up 1 sec time error.
+    if wait-sec-change==true (the default) the function can block up to 1 sec but the adjustment is accurate to about 1ms.
+    if allow-wrong-time==false (the default) the time is checked if at least is 2025, otherwise returns error.
   */
-  get --wait-sec-change/bool=true
-      --allow-wrong-time/bool=false 
+  get --wait-sec-change/bool = true
+      --allow-wrong-time/bool = false 
       -> Duration? :
-    tstart:=Time.now
+    tstart := Time.now
     rtctime/Time? := null
-    exception := catch:
+    error = catch:
       if wait-sec-change:
         v := registers.read-u8 REG-START_
         while true:
@@ -71,18 +70,19 @@ class Ds3231:
           if v!=v1:
             break
       rtctime = this.get_
-    if exception:
-      error = exception
+    if error:
+      //error = exception
       return null
-    if rtctime==null:
+    if rtctime == null:
       error="GET_PROGRAMMING_ERROR"
       return null
-    adj:=Time.now.to rtctime
+    adjustment := Time.now.to rtctime
     if rtctime.utc.year<2025:
       error="DS3231_TIME_IS_INVALID"
       return null
     else:
-      return adj
+      error = null
+      return adjustment
 
   /**
     Sets the RTC time to Time.now+adjustment. The wait-sec-change and allow-wrong-time have the same meaning as the get function.
@@ -98,12 +98,14 @@ class Ds3231:
     if wait-sec-change: // wait until the second changes for better accuracy
       s := t.utc.s
       while true:
-        yield
-        t = Time.now+adjustment
+        yield // allows other code to run
+        t = Time.now + adjustment
         s1 := t.utc.s
         if s!=s1: break
-    exception := catch: this.set_ Time.now+adjustment
-    if exception: return exception //failed to set the RTC, we return a description
+    error = catch: this.set_ Time.now + adjustment
+    if error:
+      //this.error = exception
+      return error //failed to set the RTC, we return a description
     last-set-time_ = t
     return null // no error
 
@@ -139,9 +141,9 @@ class Ds3231:
     aging-register ::= 0x10 // Ds3231 datasheet
     if (offset<-128) or (offset>127):
       return "WRONG_AGING_OFFSET"
-    err:= catch:
+    error = catch:
       registers.write-i8 0x10 offset
-    return err
+    return error
 
   set-sqw_ value -> string? :
     return set-value-with-mask
@@ -159,16 +161,17 @@ class Ds3231:
       return "PARAMETERS_OUT_OF_BOUNDS"
     new-value := value
     old-value/int? := null
-    err := catch:
+    error = catch:
       old-value = registers.read-u8 register
-    if err:
-      return err
+    if error:
+      return error
     if old-value==null:
-      return "SET-VALUE-PROGRAMMING-ERROR"
+      error = "SET-VALUE-PROGRAMMING-ERROR"
+      return error
     value-to-apply := (old-value & ~mask) | (new-value & mask)
-    err = catch:
+    error = catch:
       registers.write-u8 register value-to-apply
-    return err
+    return error
 
   /**
     1 Hz output on the SQW pin. The output is push-pull so no need for pull-up or down
