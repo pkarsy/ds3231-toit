@@ -44,15 +44,15 @@ All the above are only useful if you know the wanted accuracy. Some hints:
 ## Developer Hints
 - library documentation at [ds3231 toit registry](https://pkg.toit.io/github.com/pkarsy/toit-ds3231@0.8.2/docs/)
 - Inspect the examples to see how they work in practice.
-- The library does not raise exceptions, even on hardware errors (bad cabling for example). Instead the member functions either return directly the error (time set) or return null and the error variable is set with the error (time get).
+- The library does not raise exceptions, even on hardware errors (bad cabling for example). Instead the member functions either return directly the error (time set) or return null and the error variable is set (time get).
 
 ### Constructor
 We can create the driver instance with 2 ways.
-- If we need the i2c bus for multiple peripherals, we must create the i2c bus object first, and then we pass it to the constructor.
+- If we need the i2c bus for multiple peripherals, we create the i2c bus object first, and then we pass it to the constructor.
 - If the DS3231 is the only i2c in the bus (most common case) we can simply pass the pin numbers to the constructor.
 
 ### Setting and getting the time
-This library, just like the esp-idf library and the ntp library, uses the time-adjustment instead of absolute time. This is a clever way to set the time correctly, even if there is a time gap between time-get and time-set
+This library, just like the ntp library, uses time-adjustment instead of absolute time. This is a clever way to set the time correctly, even if there is a time gap between time-get(From NTP for example) and time-set(to the DS3231)
 
 ### SQW pin
 The library does not use/need this pin by itself, but you may find it usefull for other purposes, as interrupt source etc. The following functions can control the SQW output.
@@ -72,7 +72,7 @@ DS3232 will retain the register settings as long as the module is active or even
 ### Temperature
 > get-temperature
 
-returns the temperature in °C.
+returns the temperature in °C. Internally is updated every about 1 min (SN model).
 
 ### Clock drift
 > get-drift
@@ -90,7 +90,7 @@ Can get a value from -128 up to 127 to make the clock more accurate (much less t
 [this project](https://github.com/gbhug5a/DS3231-Aging-GPS), on how to measure this offset, but most of the time you dont need it.
 
 
-### Chip operations not implemented by the driver
+### Handle chip operations not implemented by the driver
 if you want to make register manipulations you can write for example (asuming the instance is called "rtc")
 
 > rtc.set-value-with-mask --register=0x0e --value=0b0_1_000000 --mask=0x0_1_000000
