@@ -30,9 +30,9 @@ class Ds3231:
     registers=device.registers
 
   /**
-    A simplified version of the constructor.
-    We give the Pin numbers and the serial.Device is created by the constructor.
-    We can also give vcc and gnd pin numbers, so we can power the module with theese gpio pins. This simplifies the Ds3231 connection, and allows to save power when the ESP32 goes to sleep.
+    A more convenient version of the constructor.
+    We give the pin numbers, and the serial.Device is created by the constructor.
+    We can also give vcc and gnd pin numbers, to power the module with theese gpio pins. This simplifies the Ds3231 cabling, and allows to save power when the ESP32 goes to sleep.
   */
   constructor
       --sda/int
@@ -52,9 +52,10 @@ class Ds3231:
   
   /**
     Reads the time from the Ds3231 chip.
-    If wait-sec-change==false the function returns immediatelly but can have up 1 sec time error.
-    if wait-sec-change==true (the default) the function can block up to 1 sec but the adjustment is accurate to about 1ms.
+    If wait-sec-change==false the function returns immediatelly but can have up to 1 sec time error.
+    if wait-sec-change==true (the default) the function can block up to 1 sec but the adjustment is accurate to about 1 ms.
     if allow-wrong-time==false (the default) the time is checked if at least is 2025, otherwise returns error.
+    Returns the time-adjustment, or null on error
   */
   get --wait-sec-change/bool = true
       --allow-wrong-time/bool = false 
@@ -71,7 +72,6 @@ class Ds3231:
             break
       rtctime = this.get_
     if error:
-      //error = exception
       return null
     if rtctime == null:
       error="GET_PROGRAMMING_ERROR"
@@ -85,7 +85,7 @@ class Ds3231:
       return adjustment
 
   /**
-    Sets the RTC time to Time.now+adjustment. The wait-sec-change and allow-wrong-time have the same meaning as the get function.
+    Sets the RTC time to Time.now+adjustment. The wait-sec-change and allow-wrong-time have the same meaning as the get function. On success returns null otherwise returns the error.
   */
   set --adjustment/Duration
       --wait-sec-change/bool=true
@@ -93,7 +93,8 @@ class Ds3231:
       -> string? : // error as string or null
     adjustment += Duration --us=1750 // we compensate for the i2c and MCU delays
     if allow-wrong-time==false and (Time.now + adjustment).utc.year<2025:
-      return "YEAR_LESS_THAN_2025"
+      error = "YEAR_LESS_THAN_2025"
+      return error
     t := Time.now + adjustment
     if wait-sec-change: // wait until the second changes for better accuracy
       s := t.utc.s
@@ -106,6 +107,7 @@ class Ds3231:
     if error:
       //this.error = exception
       return error //failed to set the RTC, we return a description
+    // no error happened
     last-set-time_ = t
     return null // no error
 
@@ -191,7 +193,7 @@ class Ds3231:
   disable-sqw -> string? :
     return set-sqw_ 0b000_111_00
   
-  /** be careful pull-up or pull-down is not only unnecesary but can eat precious power from the coin-cell */
+  /** Not a good idea generally. Be especially careful that do not connect (or software enable) pull-up or pull-down. Is not necesary, and will eat precious power from the coin-cell */
   enable-battery-backed-sqw -> string? :
     return set-value-with-mask --register=0x0e --value=0b0_1_000000 --mask=0x0_1_000000
   
