@@ -12,12 +12,12 @@ We need 4 pins:
 
 > SCL SDA VCC GND
 
-The popular blue DS3231 boards (and I think all boards, check the documentation) do not have level conversion circuitry. So the VCC pin should be connected to 3.3V. The current the breakout is consuming is minimal, and we can even use GPIO pins for the VCC and GND. See the examples.
+The popular blue DS3231 boards (check the documentation for your board) does not have level conversion circuitry. So the VCC pin should be connected to 3.3V. The current the breakout is consuming is minimal, and we can even use GPIO pins for the VCC and GND. See the examples.
 
 ## RTC Coin Cell
 Note: We speak about the pupular blue breakout DS3231 board, with the primitive diode charging circuit.
 
-Use a good CR2032 coin cell. Some internet sources mention LIR2032 (rechargable) but with 3.3V the rechargable cell cannot be charged at all, making the module unusable. The CR2032 is safe with 3.3V for the same reason the LIR2032 canot be charged (No reverse current)
+Use a good CR2032 coin cell. Some internet sources mention LIR2032 (rechargable) but with 3.3V (See the above paragraph) the rechargable cell cannot be charged at all, making the module unusable. The CR2032 is safe with 3.3V for the same reason the LIR2032 canot be charged (No reverse current, as the diode has a voltage drop ~0.7 Volt). You can remove the diode as many sources mention, but it is not necessary if you power the module with 3.3V only.
 
 ## Accuracy
 We can expect Time to be set and get with a less than 1-2ms error, but this in not the whole story. The DS3231 RTC clock can have up to 2ppm drift (0 - 40C) 
@@ -37,7 +37,7 @@ The crystal of the ESP32 board normally has much worse performance than the TCXO
 
 All the above are only useful if you know the wanted accuracy. Some hints:
 
-- For a project having NTP(internet) time and we want the RTC as a backup, the DS3231 is already extremly accurate.
+- For a project having NTP(internet) time and we want the RTC as a backup, the DS3231 is already extremely accurate.
 - For projects expecting to be mostly without wifi, the aging correction can be useful, but again 1min error per year can be insignificant for many applications (irrigation timer comes to mind). Usually the calculation of the aging setting is hard to measure correctly and seems (according to internet sources) to be temparature dependend (I am not sure about this).
 - For projects really isolated (from the internet) and still requiring high time precision, a GNSS module can be a solution (you have to solve other problems of course). For Toit-lang there are more than one GNSS drivers, but I have not tested them. I have created such a [driver for tasmota](https://github.com/pkarsy/TasmotaBerryTime/tree/main/ds3231) if you are interested.
 
