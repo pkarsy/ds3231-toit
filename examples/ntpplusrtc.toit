@@ -6,27 +6,28 @@ import ntp
 // for the periods the WIFI is anavailable
 
 /*
-  If the bus is shared between more than one i2c devices we need to create the bus ourselves
-  bus := i2c.Bus --sda=(gpio.Pin 25) --scl=(gpio.Pin 26)
-  device := bus.device ds3231.DEFAULT-I2C
-  rtc := ds3231 device
-  //
-  // we can use GPIO pins as GND and VCC if we use the DS3231 alone (only 4mA)
-  // this is useful for easy cabling and battery powered projects
-  gnd := gpio.Pin 32 --output --value=0
-  vcc := gpio.Pin 33 --output --value=1
-  //
-  If the clock is the only device in the bus, all the above
-  setup can be simplified with the following constructor
-  if you are using hardware VCC and GND leave the --vcc and --gnd out.
+If the bus is shared between more than one i2c devices we need to create the bus ourselves
+bus := i2c.Bus --sda=(gpio.Pin 25) --scl=(gpio.Pin 26)
+device := bus.device ds3231.DEFAULT-I2C
+rtc := ds3231 device
+
+You can use GPIO pins as GND and VCC (only 4mA)
+This is useful for easy cabling and battery powered projects
+
+gnd := gpio.Pin 32 --output --value=0
+vcc := gpio.Pin 33 --output --value=1
+
+If the clock is the only device in the bus, all the above
+setup can be simplified with the following constructor
+if you are using hardware VCC and GND leave the --vcc and --gnd out.
 */
 
 
 /*
-  The following configurations are for convenience (the pins are in the same order)
-  you are free to use any pin that is allowed by the board or the ESP chip.
-  Read the board's documentation on the pins you can use. Straping and special purpose pins
-  should be avoided
+The following configurations are for convenience (the pins are in the same order)
+you are free to use any pin that is allowed by the board or the ESP chip.
+Read the board's documentation on the pins you can use. Straping and special purpose pins
+should be avoided.
 */
 // rtc ::= Ds3231 --scl=4 --sda=5 // /* esp32-c3 luatos core (with and without serial chip) */
 // rtc ::= Ds3231 --scl=7 --sda=6 --vcc=10 --gnd=3 /* esp32-c3 core with GPIO as vcc and gnd */

@@ -1,0 +1,6 @@
+dependencies:
+  ds3231:
+    path: ..
+  ntp:
+    url: github.com/toitlang/pkg-ntp
+    version: ^1.1.0
