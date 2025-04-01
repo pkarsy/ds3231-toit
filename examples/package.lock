@@ -1,0 +1,12 @@
+sdk: ^2.0.0-alpha.144
+prefixes:
+  ds3231: ..
+  ntp: pkg-ntp
+packages:
+  ..:
+    path: ..
+  pkg-ntp:
+    url: github.com/toitlang/pkg-ntp
+    name: ntp
+    version: 1.1.0
+    hash: e69bb1abc0d3d4aa7642eec3360e52744e4d011d

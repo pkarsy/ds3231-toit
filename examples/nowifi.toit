@@ -23,21 +23,20 @@ main:
   task:: main-job
 
 
-main-job: // does not return, we need to call it with task::
+main-job: // Does not return, and should typically called inside a task.
   while true:
-    // works with or without internet. Of course the DS3231 must have correct
-    // time (and a good CR2032 coin cell). Use the other example to do this
-    print "The time is $Time.now" // UTC time. For local time use Time.now.local
+    // Works with or without internet. Of course the DS3231 must have correct
+    // time (and a good CR2032 coin cell). See the other example.
+    print "The time is $Time.now" // UTC time. For local time use Time.now.local.
     sleep --ms=5_000
 
 
-update-system-time: // does not return, we need to call it with task::
+update-system-time: // Does not return, and should typically called inside a task.
   while true:
     result := rtc.get
     if result.adjustment:
       // The Ds3231 crystal is way more accurate than the crystal on the ESP32 board
       // and also is temperature compensated.
-      // So is better once per hour to refresh the system time
       adjust_real_time_clock result.adjustment
       print "Got system time from RTC : adjustment=$result.adjustment"
     else:
