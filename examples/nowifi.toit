@@ -1,15 +1,13 @@
 import esp32 show adjust_real_time_clock
 import ds3231 show Ds3231
 
-// Only RTC is available, no wifi. The DS3231 can be off 1min/year
+// for options on how to setup the Ds3231 driver see the ntp-plus-rtc.toit example
+
+// Only RTC is available, no wifi. The DS3231 can be off 1 min/year
 // but for many applications this is OK.
-// If there is Wifi, even rarelly your mobile phone as hotspot
+// If there is Wifi, even occasionally
 // you should check the "ntpplusrtc.toit" example.
 
-// The following configurations are for convenience (the pins are in the same order)
-// you are free to use any pin that is allowed by the board or the ESP chip.
-// Read the board's documentation on the pins you can use. Straping and special purpose pins
-// should be avoided
 rtc ::= Ds3231 --scl=4 --sda=5 // /* esp32-c3 luatos core (with or without serial chip) */
 // rtc ::= Ds3231 --scl=7 --sda=6 --vcc=10 --gnd=3 /* esp32-c3 core with GPIO as vcc and gnd */
 // rtc := Ds3231 --sda=25 --scl=26 --vcc=33 --gnd=32 /* Lolin32 lite */
@@ -25,11 +23,10 @@ main:
 
 main-job: // Does not return, and should typically called inside a task.
   while true:
-    // Works with or without internet. Of course the DS3231 must have correct
-    // time (and a good CR2032 coin cell). See the other example.
-    print "The time is $Time.now" // UTC time. For local time use Time.now.local.
+    /** Works OK without internet. Of course the DS3231 must have correct
+    time, and a good CR2032 coin cell. */
+    print "The time is $Time.now" // Or Time.now.local
     sleep --ms=5_000
-
 
 update-system-time: // Does not return, and should typically called inside a task.
   while true:

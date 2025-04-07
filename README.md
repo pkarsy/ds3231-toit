@@ -1,8 +1,8 @@
 # Ds3231
-Toit driver for the DS3231 real time clock.
+[Toit](https://toitlang.org/) driver for the DS3231 real time clock.
 
 ## Warning
-Working with time, especally if there are constraints on the accuracy, is a
+Working with time, especially if there are constraints on the accuracy, is a
 hard job. At the moment the library has limited testing and bugs are expected.
 Any help on inmpoving the driver is welcome.
 
@@ -14,9 +14,9 @@ You need 4 pins:
 
 > SCL SDA VCC GND
 
-The popular blue DS3231 boards (check the documentation for your board) does not
+The popular blue DS3231 boards (check the documentation for your board) do not
 have level conversion circuitry. So the VCC pin should be connected to 3.3V.
-The breakout consumes minimal current, and you use GPIO pins for the VCC and
+The breakout consumes minimal current, and you can use GPIO pins for the VCC and
 GND. See the examples.
 
 ## RTC Coin Cell
@@ -49,7 +49,7 @@ phone as access point) the time could be fixed using NTP. See the
 "ntp-plus-rtc.toit" exanple.
 
 The crystal of the ESP32 board normally has much worse performance than
-the TCXO crystal of the Ds3231, so it makes sense (when not using NTP) to
+the TCXO crystal of the Ds3231, and it makes sense (when not using NTP) to
 update the system (ESP32) time every hour using the DS3231 time. See
 the example "nowifi.toit" for this.
 
@@ -58,7 +58,7 @@ All the above are only useful if you know the wanted accuracy. Some hints:
 - For a project having NTP(internet) time and we want the RTC as a backup,
   the DS3231 is already extremely accurate.
 - For projects expecting to be mostly without wifi, the aging correction can be
-  useful, but a 1 minute error per year can still be insignificant for many applications
+  useful, but a 1 minute error per year can still be insignificant 
   (irrigation timer comes to mind). Usually the calculation of the aging setting is
   hard to measure correctly and seems (according to internet sources) to be
   temperature dependend (I am not sure about this).
@@ -70,18 +70,15 @@ All the above are only useful if you know the wanted accuracy. Some hints:
   if you are interested.
 
 ## Developer Hints
-- library documentation at [ds3231 toit registry](https://pkg.toit.io/github.com/pkarsy/toit-ds3231@0.8.2/docs/)
+- library documentation at [ds3231 @ toit package registry](https://pkg.toit.io/search?query=ds3231)
 - Inspect the examples to see how they work in practice.
-- The library does not raise exceptions, even on hardware errors (bad cabling for
-   example). Instead the member functions either return directly the error (time set)
-   or return null and the error variable is set (time get).
+- Almost all library calls can raise exceptions, for example when the cabling is bad.
 
 ### Constructor
 You can create the driver instance in 2 ways.
-- If you need the i2c bus for multiple peripherals, you need to create the i2c
-  bus object first, and then pass it to the constructor.
-- If the DS3231 is the only i2c in the bus (most common case) you can simply pass
-  the pin numbers to the constructor.
+- Create the i2c bus object first, and then pass it to the constructor.
+- If the DS3231 is the only i2c device in the bus (most common case) you
+  can simply pass the pin numbers to the constructor.
 
 ### Setting and getting the time
 This library, just like the ntp library, uses time-adjustment instead of absolute
@@ -121,12 +118,14 @@ Not implemented at the moment.
 
 > set-aging-offset
 
-Can get a value from -128 up to 127 to make the clock more accurate (much less than 2ppm). See
-[this project](https://github.com/gbhug5a/DS3231-Aging-GPS), on how to measure this offset,
-but most of the time you dont need it.
+Can get a value from -128 up to 127 to make the clock more accurate (much less than 2ppm).
+- [this project](https://github.com/gbhug5a/DS3231-Aging-GPS), can be used to measure the
+  offset but requires some work from your part, and some addidtional hardware components.
+- For the lazy, the example "calculate-offser.toit" can give you an offset, but it requires
+  at least a day of measurements.
 
 ### VCC GND and battey powered projects
 On battery, the 4mA the DS3231 is using, is a huge consumption. For this specific
 purpose the VCC and GND can be GPIO pins, and the DS3231 module is powered OFF when
 in deep-sleep. Assuming a good CR2032 coin cell, the time keeping function will
-still work.
+still work and the registers will retain their values.

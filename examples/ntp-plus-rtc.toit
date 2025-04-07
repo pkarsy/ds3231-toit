@@ -2,38 +2,38 @@ import esp32 show adjust_real_time_clock
 import ds3231 show Ds3231
 import ntp
 
-// we have both wifi and DS3231 and we want the RTC
-// for the periods the WIFI is anavailable
-
 /*
+Scenario:
+we have both wifi and DS3231 and we want the RTC
+for the periods the WIFI is anavailable
+
 If the bus is shared between more than one i2c devices we need to create the bus ourselves
 bus := i2c.Bus --sda=(gpio.Pin 25) --scl=(gpio.Pin 26)
-device := bus.device ds3231.DEFAULT-I2C
+device := bus.device ds3231.I2C-DEFAULT
 rtc := ds3231 device
 
 You can use GPIO pins as GND and VCC (only 4mA)
-This is useful for easy cabling and battery powered projects
+This is useful for easy cabling, and for battery powered projects (the ESP32 sleep turns off the DS3231)
 
 gnd := gpio.Pin 32 --output --value=0
 vcc := gpio.Pin 33 --output --value=1
 
 If the clock is the only device in the bus, all the above
 setup can be simplified with the following constructor
-if you are using hardware VCC and GND leave the --vcc and --gnd out.
-*/
+if you are true hardware VCC and GND pins, leave the --vcc and --gnd out.
 
-
-/*
 The following configurations are for convenience (the pins are in the same order)
 you are free to use any pin that is allowed by the board or the ESP chip.
 Read the board's documentation on the pins you can use. Straping and special purpose pins
 should be avoided.
-*/
-rtc ::= Ds3231 --scl=4 --sda=5 // /* esp32-c3 luatos core (with and without serial chip) */
+
 // rtc ::= Ds3231 --scl=7 --sda=6 --vcc=10 --gnd=3 /* esp32-c3 core with GPIO as vcc and gnd */
 // rtc := Ds3231 --sda=25 --scl=26 --vcc=33 --gnd=32 /* Lolin32 lite */
 // rtc := Ds3231 --sda=33 --scl=32 --vcc=25 --gnd=26 /* ESP32 Devkit all versions */
 // rtc := Ds3231 --sda=35 --scl=36 --vcc=37 --gnd=38 /* S3 devkitC abudance of pins here */
+
+*/
+rtc ::= Ds3231 --scl=4 --sda=5 /* esp32-c3 luatos core (with or without serial chip) */
 
 main:
   task:: update-time // This task is doing the time sync
@@ -64,17 +64,10 @@ update-time:
           sleep (Duration --m=1)
           continue
       last-ntp-time = Time.now + result.adjustment
-      // the adjustment is relative to the current time
-      // WARNING : we first set the RTC clock, so the adjustment will be valid
       rtc.set result.adjustment //--adjustment=result.adjustment
-      // Now we can also set the system time, which of course resets the required adjustment
       adjust_real_time_clock result.adjustment // The time will be corrected gradually
-      // set-real-time-clock Time.now + ntp-result.adjustment // the same but sets the time instantly
-      //if err: print "Cannot set the RTC time : err"
-      //else: 
       print "Setting the RTC time using the NTP time"
       print "NTP sync done adjustment=$result.adjustment acc=$result.accuracy"
-      //
       sleep (Duration --m=30) // sync again after 30 min
     else:
       print "NTP synchronization failed" // comment out if the wifi is intermittent
@@ -88,12 +81,9 @@ check-time-sync: // for debugging purposes
     if ntp-result:
       print "[TEST-START] NTP-time - System-time : $ntp-result.adjustment accuracy=$ntp-result.accuracy"
     adjustment := rtc.get
-    //if rtc-result.adjustment:
     print "[TEST      ] RTC-time - System-time : $adjustment. Possible RTC drift : $rtc.expected-drift"
     if ntp-result:
       print "[TEST-END  ] NTP-time - RTC-time    : $(ntp-result.adjustment - adjustment)"
-  //else:
-    //print "Cannot get the time from the RTC : $rtc-result.error"
     sleep --ms=30_000
 
 check-get-set-accuracy:

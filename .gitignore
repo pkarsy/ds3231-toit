@@ -1,1 +1,3 @@
 .packages/
+src/ds3231.toit.old
+.gitignore
