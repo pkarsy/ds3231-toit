@@ -119,10 +119,11 @@ Not implemented at the moment.
 > set-aging-offset
 
 Can get a value from -128 up to 127 to make the clock more accurate (much less than 2ppm).
-- [this project](https://github.com/gbhug5a/DS3231-Aging-GPS), can be used to measure the
-  offset but requires some work from your part, and some addidtional hardware components.
-- For the lazy, the example "calculate-offser.toit" can give you an offset, but it requires
-  at least a day of measurements.
+- inside tools/ there is the **offset-calculator.toit app**. The hardware setup is minimal a
+  ESP32x and a Ds3231 module(a lipo cell is a plus). It is very slow, but you can use
+  multiple modules to setup more Ds3231 in parallel.
+- [this project](https://github.com/gbhug5a/DS3231-Aging-GPS), is much faster but also
+  has more work(and hardware) to implement.
 
 ### VCC GND and battey powered projects
 On battery, the 4mA the DS3231 is using, is a huge consumption. For this specific
