@@ -10,27 +10,27 @@ import encoding.json show encode
 /*
 WARNING: To use this program effectively you have to check the comments
 and set the parameters apropriatelly.
-WARNING: You need an MQTT client like EMQTX or MQTT-Explorer 
+You need an MQTT client like EMQTX or MQTT-Explorer 
 
-DS3231 aging offset calculator. Automatically applies the offset to the module. Be aware
-that if you remove the battery (and the VCC-GND are unpowered) the chips loses all settings.
+Automatically applies the offset to the module. Be aware
+that if you remove the battery (and the VCC-GND are unpowered)
+the chips loses all settings.
 
 Only a ESP32x (with stable wifi) and DS3231 is needed. ESP modules with lipo socket are
 greatly preferred (To avoid interruptions).
-This extreme simplicity has the drawback of slowness.
 Typically after after 12-24 h the program applies an aging factor. However the program must
-run again, as rarely the correction eliminates the systematic drift entirelly. After a few days
-the process is complete. The good news is you can have many ESP modules running in parallel.
+run again, as rarely the correction eliminates the systematic drift entirelly. After the
+aging factor is applied the module will reset and start again.
+After a few days the process is complete. The good news is you can have many ESP modules
+running in parallel. If you have more than one running modules,
 YOU NEED TO PUT A LABEL WITH THE TOIT name in every ESP module is used for this purpose.
-The MQTT topic contains the IP and it is very easy with "toit scan" to find the module.
+The MQTT topic contains the IP and it is very easy with "toit scan" to find the correct
+module.
 
-Many DS3231 modules have ppm far lower than 2ppm even close to 0 ppm
-at room conditions. Some values I found are 1.2 0.6 0.2 etc
+Some values I found are 1.2 0.6 0.2 etc
 
 Use the SN chips. The MEMS based are not very accurate
 
-Try to mimic somewhat the expected working temperature conditions. Especially important with the MEMS
-version, but there is no reason to use it anyway, if you are about time accuracy.
 */
 
 /** ****** START OF CONFIGURATION ****** */

@@ -1,3 +1,4 @@
 .packages/
 src/ds3231.toit.old
 .gitignore
+tools/offset-calculator.pk.toit
