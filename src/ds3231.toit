@@ -17,9 +17,6 @@ class Ds3231:
   static REG-AGING_ ::= 0x10 // The aging register.
   static REG-TEMPERATURE_ ::= 0x11 // The decimals are ignored
 
-  //static REG-ALARM1 ::= 0x07 // 4 registers
-  //static REG-ALARM2 ::= 0x0B // 3 registers
-
   /**
     for direct register read/write, if the library functions are not enough
     in that case you may consider set-bits-with-mask
@@ -73,15 +70,26 @@ class Ds3231:
       --gnd/int? = null
       --addr/int = I2C-ADDRESS:
     try:
+      /** will become true if vcc or gnd are GPIO pins */
+      gpio-power := false
+      // The vcc and gnd are the first to configure,
+      // to allow the module to power up and continue with i2c transaction.
+      if vcc and vcc >= 0:
+        vcc_ = gpio.Pin vcc --output
+        vcc_.set 1
+        gpio-power = true
+      if gnd and gnd >= 0:
+        gnd_ = gpio.Pin gnd --output
+        gnd_.set 0
+        gpio-power = true
+      if gpio-power:
+        sleep --ms=5 // To allow the DS3231 to power up. Not sure is needed.
       sda_ = gpio.Pin sda
       scl_ = gpio.Pin scl
       bus = i2c.Bus --sda=sda_ --scl=scl_
       device := bus.device addr
       registers = device.registers
-      if vcc and vcc >= 0:
-        vcc_ = gpio.Pin vcc --output --value=1
-      if gnd and gnd >= 0:
-        gnd_ = gpio.Pin gnd --output --value=0
+
     finally: | is-exception _ |
       if is-exception:
         if bus: bus.close
@@ -89,8 +97,6 @@ class Ds3231:
         if scl_: scl_.close
         if vcc_: vcc_.close
         if gnd_: gnd_.close
-    // Work-around for https://github.com/toitlang/toit/issues/2758.
-    // registers_ = registers
 
   /** Closes this driver. */
   close -> none:
@@ -111,15 +117,12 @@ class Ds3231:
       gnd_ = null
 
   /**
-  Reads the time from the Ds3231 chip, and returns the adjustment the current
-  system time needs.
+  Reads the time from the Ds3231 chip, and returns the adjustment.
 
   If $wait-sec-change is false the function returns immediately but can have a time
     error of up to 1 second.
   If $wait-sec-change is true (the default), this function can block up to 1 sec but
     the adjustment is accurate to about 1 ms.
-
-  If $allow-wrong-time is true, checks that the time is at least 2025.
   */
   get -> Duration
       --wait-sec-change/bool = true
@@ -148,7 +151,7 @@ class Ds3231:
   set adjustment/Duration
       --wait-sec-change/bool=true
       --allow-wrong-time/bool=false -> none :
-    adjustment += Duration --us=1750 // We compensate for the i2c and MCU delays.
+    adjustment += Duration --us=2750 // We compensate for the i2c and MCU delays.
     if not allow-wrong-time and (Time.now + adjustment).utc.year < 2025:
       throw "YEAR_LESS_THAN_2025"
     t := Time.now + adjustment
@@ -162,7 +165,6 @@ class Ds3231:
     set_ (Time.now + adjustment)
 
   get_ -> Time:
-    // read-bytes can throw an exception.
     buffer := registers.read-bytes REG-START_ REG-NUM_
     t := []
     buffer.do:
@@ -174,14 +176,11 @@ class Ds3231:
     u := tm.utc
     // Must be 7 fields, the same as the Ds3231 time keeping registers.
     t := [u.s, u.m, u.h, u.weekday, u.day, u.month, (u.year - 2000)]
-    // We can get this error only by messing with the "t" fields, so not really useful.
-    // if t.size != REG-NUM_: throw "INCORRECT_ELEMENTS_NUMBER"
     buffer := ByteArray REG-NUM_: int2bcd_ t[it]
-    /** write-bytes can throw an exception.
-    We write a byte to reset the countdown timer.
+    /** We write a byte to reset the countdown timer.
     Without this a full second(1000ms) error often happens */
-    registers.write-u8 REG-START_ 0 
-    registers.write-bytes REG-START_ buffer
+    registers.write-u8 REG-START_ 0 // resets the countdown timer, any value is OK
+    registers.write-bytes REG-START_ buffer // writes the time
 
   /**
   Sets the aging offset.
@@ -213,7 +212,7 @@ class Ds3231:
   The given $value is applied unshifted (but masked).
   */
   set-value-with-mask --register/int --mask/int --value/int -> none:
-    if not (0 <= register <= 0x12 and 0 <= mask <= 255 and 0 <= value <= 255):
+    if not ((0 <= register <= 0x12) and (0 <= mask <= 255) and (0 <= value <= 255)):
       throw "PARAMETER_OUT_OF_BOUNDS"
     new-value := value
     old-value/int := registers.read-u8 register
@@ -239,7 +238,7 @@ class Ds3231:
   /**
   Enables the given $frequency on the sqw pin.
 
-  The output is push-pull and doesn't need any pull-up or pull-down.
+  The output is push-pull, so it does not need any pull-up or pull-down.
 
   The $frequency must be one of 1, 1000, 4000, or 8000.
   */
@@ -259,8 +258,8 @@ class Ds3231:
   Enables the battery-backed sqw.
 
   This is generally not a good idea. Be especially careful not to
-    connect any pull-up or pull-down (even software enabled). It's not necesary,
-    and will consume precious energy from the coin-cell.
+  connect any pull-up or pull-down (even software enabled). It's not necesary,
+  and will consume precious energy from the coin-cell.
   */
   enable-battery-backed-sqw -> none :
     set-value-with-mask --register=0x0e --value=0b0_1_000000 --mask=0x0_1_000000
@@ -277,29 +276,22 @@ class Ds3231:
   TODO fix this
   */
   get-temperature -> int :
+    /** the data is stored as 2 complement */
     return registers.read-i8 REG-TEMPERATURE_
 
   /**
-  Returns the expected drift.
+  Returns the expected drift. A Time object must be given
 
-  The drift is calculated by assuming a 2ppm error since the last time the clock is set.
-  if the time was never stored, in the lifetime of the object, it returns null. The
-  drift is usually smaller, and in some cases (high temperature changes) can be greater.
+  The drift is calculated by assuming a 2ppm error (unless you set a different)
+  since the last time the clock is set. The drift is usually smaller, and in some
+  cases (high temperature deviations) can be greater. With the aging offset calibrated
+  and not very high temperature deviations, this can be significantly lower.
   */
   expected-drift --from-time/Time --ppm/num=2 -> Duration?:
     ppm = ppm * 1.0 // to be sure is float
     t/Time := Time.now
     //if not last-set-time_: return null
     return (from-time.to t) * ppm / 1e6
-  
-  /* get-alarm-1 -> Time:
-    buffer := registers.read-bytes REG-ALARM1 4
-    t := []
-    buffer.do:
-      t.add (bcd2int_ it)
-    now ::= Time.now.utc
-    am1 := Time.utc --s=t[0] --m=t[1] --h=t[2] --day=t[3] --month=now.month --year=now.year
-    return am1 */
 
   /** seconds minutes hours etc. are stored in the DS3231 registers as BCD. */
   static int2bcd_ x/int -> int:
