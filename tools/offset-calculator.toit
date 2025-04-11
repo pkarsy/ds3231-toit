@@ -95,7 +95,7 @@ client/mqtt.SimpleClient? := null // main->mqtt-setup does the connection
 // TIMEZONE ::= "EET-2EEST,M3.5.0/3,M10.5.0/4"
 TIMEZONE ::= null // for UTC
 
-/** If the led turns off, you know something happened
+/** If the led turns off, you know something happened,
 power outage or program crash. */
 
 // lolin32 lite
