@@ -182,8 +182,8 @@ class Ds3231:
   /**
   Sets the aging offset.
 
-  The offset can me measured by following the instructions from
-  https://github.com/gbhug5a/DS3231-Aging-GPS
+  run the "offset-calulator.toit" app to calculate it.
+  More info on the README
   The new value will work after the next temp conversion.
   The $offset must satisfy -128 <= $offset <= 127.
   */
