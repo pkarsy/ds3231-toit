@@ -191,9 +191,12 @@ class Ds3231:
     if not -128 <= offset <= 127: throw "INVALID_ARGUMENT"
     registers.write-i8 REG-AGING_ offset
 
-  /**  Read the aging offset from the chip. When first powered has
-  the value of 0, but if set to a different value(-128 to 127), it
-  can retain this value as long is powered or battery backed. */
+  /** 
+  Reads the aging offset from the chip.
+  
+  When first powered it has the value of 0, but if set to a
+  different value, it can retain this value as long is powered
+  or battery backed. */
   get-aging-offset -> int: // useful with "offset-calulator.toit"
     return registers.read-i8 REG-AGING_
 
