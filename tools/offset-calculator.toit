@@ -5,7 +5,6 @@ import gpio
 import ntp
 import mqtt
 import net
-//import encoding.json show encode
 
 /*
 WARNING: To use this program effectively you have to check the comments
