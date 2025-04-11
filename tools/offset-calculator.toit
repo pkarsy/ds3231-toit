@@ -67,7 +67,7 @@ However I still prefer ESP32 lolin32 due to Lipo socket. The measurement
 is very lengthly, and the Lipo prevents accidental interruptions. I guess
 if you use a power bank (connected to AC) you can use any module.
 */
-NTP-ERROR-MAX := (Duration --ms=20) // Reduce to 10 for local chrony
+NTP-ERROR-MAX := (Duration --ms=30) // Reduce to 10 for local chrony
 /**
 You can reduce it a little further, to have better accuracy, when
 setting the time to the DS3231 (when the program starts). The first NTP
