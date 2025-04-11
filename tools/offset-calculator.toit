@@ -1,11 +1,11 @@
-import esp32 show adjust_real_time_clock set-real-time-clock deep-sleep
+import esp32 show set-real-time-clock deep-sleep
 import ds3231 show Ds3231
 import gpio
 
 import ntp
 import mqtt
 import net
-import encoding.json show encode
+//import encoding.json show encode
 
 /*
 WARNING: To use this program effectively you have to check the comments
