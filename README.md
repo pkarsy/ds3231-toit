@@ -46,27 +46,27 @@ to extreme temperatures. (See the Aging Correction below)
 
 If the project can have internet access (even occasionally, for example a mobile
 phone as access point) the time could be fixed using NTP. See the
-"ntp-plus-rtc.toit" exanple.
+"ntp-plus-rtc.toit" example.
 
-The crystal of the ESP32 board normally has much worse performance than
+The crystal of the ESP32 board inevitably has much worse performance than
 the TCXO crystal of the Ds3231, and it makes sense (when not using NTP) to
 update the system (ESP32) time every hour using the DS3231 time. See
 the example "nowifi.toit" for this.
 
-All the above are only useful if you know the wanted accuracy. Some hints:
+All the above are only useful, if you know the wanted accuracy. Some hints:
 
-- For a project having NTP(internet) time and we want the RTC as a backup,
+- For a project having NTP(internet) time, but need the RTC as a backup,
   the DS3231 is already extremely accurate.
+
 - For projects expecting to be mostly without wifi, the aging correction can be
   useful, but a 1 minute error per year can still be insignificant 
-  (irrigation timer comes to mind). Usually the calculation of the aging setting is
-  hard to measure correctly and seems (according to internet sources) to be
-  temperature dependend (I am not sure about this).
+  (irrigation timer comes to mind). See below on how to calculate the aging offset
+  
 - For projects really isolated (from the internet) and still requiring high time
   precision, a GNSS module can be a solution (you have to solve other problems of
-  course). For Toit there are more than one GNSS drivers, but I have not tested them.
+  course). For Toit there are GNSS drivers, but I have not tested them.
   I have created such a
-  [driver for tasmota](https://github.com/pkarsy/TasmotaBerryTime/tree/main/ds3231)
+  [GNSS time driver for tasmota](https://github.com/pkarsy/TasmotaBerryTime/tree/main/ds3231)
   if you are interested.
 
 ## Developer Hints
@@ -108,8 +108,7 @@ returns the temperature in °C. Internally is updated every about 1 min (SN mode
 ### Clock drift
 > expected-drift
 
-shows the expected time drift (assuming 2ppm error) since the last time the clock
-was set. The real drift is usually smaller. You can set the ppm error.
+shows the expected time drift (assuming 2ppm error) since the given time. The real drift is usually smaller. You can set the ppm error.
 
 ### ALARM 1/2
 Not implemented at the moment.
@@ -118,15 +117,15 @@ Not implemented at the moment.
 
 > set-aging-offset
 
-Can get a value from -128 up to 127 to make the clock more accurate (much less than 2ppm).
+Can get a value from -128 up to 127 to make the clock more accurate (in fact less than 2ppm).
 - inside tools/ there is the **offset-calculator.toit app**. The hardware setup is minimal a
-  ESP32x and a Ds3231 module(a lipo cell is a plus). It is very slow, but you can use
-  multiple modules to setup more Ds3231 in parallel.
+  ESP32x and a Ds3231 module. It is very slow, but you can use
+  multiple modules in parallel.
 - [this project](https://github.com/gbhug5a/DS3231-Aging-GPS), is much faster but also
-  has more work(and hardware) to implement.
+  needs more work (and hardware) to implement.
 
 ### VCC GND and battey powered projects
-On battery, the 4mA the DS3231 is using, is a huge consumption. For this specific
+On battery, the 4mA the DS3231 is using, is a huge consumption. For this
 purpose the VCC and GND can be GPIO pins, and the DS3231 module is powered OFF when
 in deep-sleep. Assuming a good CR2032 coin cell, the time keeping function will
-still work and the registers will retain their values.
+still work (for 10 years !) and the registers will retain their values.
