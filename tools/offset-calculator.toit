@@ -82,7 +82,7 @@ CHECK-PERIOD ::= (Duration --m=30)
 
 /** See the example "ntp-plus-rtc.toit" for various pinout setups */
 // rtc ::= Ds3231 --scl=4 --sda=5 // esp32-c3 luatos core
-// for ESP32 Devkit and lolin32/lite the following is convenent.
+// for ESP32 Devkit and lolin32/lite the following is convenient.
 rtc :=  Ds3231 --sda=33 --scl=32 --vcc=25 --gnd=26
 
 /**
