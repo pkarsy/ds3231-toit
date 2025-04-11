@@ -16,17 +16,19 @@ class Ds3231:
   static REG-TEMPERATURE_ ::= 0x11 // The decimals are ignored
 
   /**
-    for direct register read/write, if the library functions are not enough
-    in that case you may consider set-bits-with-mask
+    For direct register read/write
+    
+    Use it the library functions are not enough.
+    In that case you may also consider $set-value-with-mask
   */
   registers/serial.Registers? := null
 
-  //last-set-time_/Time? := null DEL TODO
-
   /**
-  The I2C bus. Null, if not allocated by this class.
+  The I2C bus.
+  
+  Null, if not allocated by this class.
   Kept public in case you want to use another i2c device
-  for example the AT24C32 EEPROM soldered on the blue DS3231 boards
+  for example the AT24C32 EEPROM (on the blue DS3231 boards)
   */
   bus/i2c.Bus? := null
   /** The sda-pin. Null, if not allocated by this class. */
