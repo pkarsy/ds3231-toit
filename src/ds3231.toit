@@ -6,9 +6,7 @@ import serial
 Driver for the DS3231 Real Time Clock.
 */
 class Ds3231:
-  /**
-  The i2c adress of the DS3231 is 0x68 (cannot be changed)
-  */
+  /** The i2c adress of the DS3231 is 0x68 and cannot be changed */
   static I2C-ADDRESS ::= 0x68
 
   static REG-START_ ::= 0x00  // The first time (seconds) register is at location 0x00.
@@ -67,8 +65,7 @@ class Ds3231:
       --sda/int
       --scl/int
       --vcc/int? = null
-      --gnd/int? = null
-      --addr/int = I2C-ADDRESS:
+      --gnd/int? = null :
     try:
       /** will become true if vcc or gnd are GPIO pins */
       gpio-power := false
@@ -87,7 +84,7 @@ class Ds3231:
       sda_ = gpio.Pin sda
       scl_ = gpio.Pin scl
       bus = i2c.Bus --sda=sda_ --scl=scl_
-      device := bus.device addr
+      device := bus.device I2C-ADDRESS
       registers = device.registers
 
     finally: | is-exception _ |
@@ -194,6 +191,9 @@ class Ds3231:
     if not -128 <= offset <= 127: throw "INVALID_ARGUMENT"
     registers.write-i8 REG-AGING_ offset
 
+  /**  Read the aging offset from the chip. When first powered has
+  the value of 0, but if set to a different value(-128 to 127), it
+  can retain this value as long is powered or battery backed. */
   get-aging-offset -> int: // useful with "offset-calulator.toit"
     return registers.read-i8 REG-AGING_
 
