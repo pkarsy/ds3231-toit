@@ -42,18 +42,18 @@ ID ::= "xy"
 
 /*
 Use a (good) LAN NTP server if you have one
-I use "chrony" on a debian server mini pc (ethernet connection of course).
+I use "chrony" on a debian server mini pc (has ethernet connection).
 The buildin NTP server of openwrt does not seem to have millisecond
 accuracy which is logical (I am not blaming openwrt here) and should
-not be used. If your Internet connection is not stable, no server
-can help you.
+not be used. The chrony is available for openwrt but I have not tested
+it. If your Internet connection is not stable, no server can help.
 */
-//NTP-SERVER ::= "10.5.2.3"
+//NTP-SERVER ::= "192.168.5.2"
 
 /*
 Works but it is suboptimal. The ntp error is more than 15ms
 (depends on your location) and occasionally 200-500ms !
-Needless to say, you need more time to get acceptable results
+Needless to say, more time is required to get acceptable results.
 */
 NTP-SERVER ::= "pool.ntp.org"
 
@@ -64,7 +64,8 @@ When using a local NTP server(chrony), you can reduce this:
 and --ms=8-10 with ESP32
 esp32-c3 although the cheapest in the family, has superb wifi lag(low)
 However I still prefer ESP32 lolin32 due to Lipo socket. The measurement
-is very lengthly, and the Lipo prevents accidental interruptions.
+is very lengthly, and the Lipo prevents accidental interruptions. I guess
+if you use a power bank (connected to AC) you can use any module.
 */
 NTP-ERROR-MAX := (Duration --ms=20) // Reduce to 10 for local chrony
 /**

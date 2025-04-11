@@ -2,6 +2,3 @@ name: ds3231
 description: Ds3231 realtime clock driver
 environment:
   sdk: ^v2.0.0-alpha.176
-dependencies:
-  ds3231:
-    path: ..

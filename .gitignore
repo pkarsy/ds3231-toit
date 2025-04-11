@@ -2,3 +2,9 @@
 src/ds3231.toit.old
 .gitignore
 tools/offset-calculator.pk.toit
+tools/package.yaml
+tools/package.lock
+/package.yaml
+/package.lock
+
+package.lock
