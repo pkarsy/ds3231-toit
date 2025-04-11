@@ -1,1 +1,41 @@
 sdk: ^2.0.0-alpha.176
+prefixes:
+  ds3231: localPkg5
+packages:
+  localPkg5:
+    path: ..
+    prefixes:
+      certificate-roots: pkg1
+      ds3231: localPkg6
+      http: pkg2
+      mqtt: pkg3
+      ntp: pkg4
+      telegram: pkg0
+  pkg0:
+    url: github.com/floitsch/toit-telegram
+    name: telegram
+    version: 0.5.3
+    hash: 438903d35f6eae1faa7573f5f51b4fa5db3b7dff
+    prefixes:
+      certificate_roots: pkg1
+      http: pkg2
+  pkg1:
+    url: github.com/toitware/toit-cert-roots
+    name: certificate-roots
+    version: 1.10.0
+    hash: 1445c4a6cae47689674ae02c5f1dc03660f1df8c
+  pkg2:
+    url: github.com/toitlang/pkg-http
+    name: http
+    version: 2.9.0
+    hash: ed6e198259c578154de830dc492821fdb5a40c7a
+  pkg3:
+    url: github.com/toitware/mqtt
+    name: mqtt
+    version: 2.12.0
+    hash: d8bf214d306d5f08848249d1944cdcd514ea18f7
+  pkg4:
+    url: github.com/toitlang/pkg-ntp
+    name: ntp
+    version: 1.1.0
+    hash: e69bb1abc0d3d4aa7642eec3360e52744e4d011d

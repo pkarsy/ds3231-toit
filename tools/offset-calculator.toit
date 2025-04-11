@@ -38,7 +38,7 @@ Use the SN chips. The MEMS based are not very accurate
 /** Your initials or something unique, mainly useful for public mqtt servers.
 Set it only once, and do not change it again. Appears as part of the mqtt topic
 and isolates you from possible other users. */
-ID ::= "pk"
+ID ::= "xy"
 
 /*
 Use a (good) LAN NTP server if you have one
@@ -48,14 +48,14 @@ accuracy which is logical (I am not blaming openwrt here) and should
 not be used. If your Internet connection is not stable, no server
 can help you.
 */
-NTP-SERVER ::= "10.5.2.3"
+//NTP-SERVER ::= "10.5.2.3"
 
 /*
 Works but it is suboptimal. The ntp error is more than 15ms
 (depends on your location) and occasionally 200-500ms !
 Needless to say, you need more time to get acceptable results
 */
-// NTP-SERVER ::= "pool.ntp.org"
+NTP-SERVER ::= "pool.ntp.org"
 
 /**
 For "pool.ntp.org" cannot be lower than 20ms.
@@ -66,7 +66,7 @@ esp32-c3 although the cheapest in the family, has superb wifi lag(low)
 However I still prefer ESP32 lolin32 due to Lipo socket. The measurement
 is very lengthly, and the Lipo prevents accidental interruptions.
 */
-NTP-ERROR-MAX := (Duration --ms=10) // Reduce to 10 for local chrony
+NTP-ERROR-MAX := (Duration --ms=20) // Reduce to 10 for local chrony
 /**
 You can reduce it a little further, to have better accuracy, when
 setting the time to the DS3231 (when the program starts). The first NTP
@@ -94,15 +94,17 @@ PORT ::= 1883
 client/mqtt.SimpleClient? := null // main->mqtt-setup does the connection
 
 // If you want the reports in local time, put the apropriate value here
-TIMEZONE ::= "EET-2EEST,M3.5.0/3,M10.5.0/4"
-// TIMEZONE ::= null // for UTC
+// TIMEZONE ::= "EET-2EEST,M3.5.0/3,M10.5.0/4"
+TIMEZONE ::= null // for UTC
 
 /** You may want the buldin led to be ON :
 - to be sure that the module is powered.
 - if the led turns off, to know something happened
 Otherwise leave the values as null */
-LED-PIN/int? ::= 22 // The pin with the LED, otherwise null
-LED-VALUE/int? ::= 0 // 1(active high) 0(active low) or null(no led)
+//LED-PIN/int? ::= 22 // The pin with the LED, otherwise null
+//LED-VALUE/int? ::= 0 // 1(active high) 0(active low) or null(no led)
+LED-PIN/int? ::= null
+LED-VALUE/int? ::= null
 
 /** END OF CONFIGURATION */
 
