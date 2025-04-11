@@ -13,8 +13,8 @@ and set the parameters apropriatelly.
 You need an MQTT client like EMQTX or MQTT-Explorer 
 
 Automatically applies the offset to the module. Be aware
-that if you remove the battery (and the VCC-GND are unpowered)
-the chips loses all settings.
+that if it is not powered, and you remove the battery
+all settings will be lost.
 
 Only a ESP32x (with stable wifi) and DS3231 is needed. ESP modules with lipo socket are
 greatly preferred (To avoid interruptions).
@@ -36,15 +36,14 @@ Use the SN chips. The MEMS based are not very accurate
 /** ****** START OF CONFIGURATION ****** */
 
 /** Your initials or something unique, mainly useful for public mqtt servers.
-Set it only once, and do not change it again. Appears as part of the mqtt topic
-and isolates you from possible other users. */
+Set it only once. Appears as part of the mqtt topic */
 ID ::= "xy"
 
 /*
-Use a (good) LAN NTP server if you have one
-I use "chrony" on a debian server mini pc (has ethernet connection).
+Use a LAN NTP server if you have one
+I use "chrony" on a debian server mini pc (with ethernet connection).
 The buildin NTP server of openwrt does not seem to have millisecond
-accuracy which is logical (I am not blaming openwrt here) and should
+accuracy, which is logical (I am not blaming openwrt here) and should
 not be used. The chrony is available for openwrt but I have not tested
 it. If your Internet connection is not stable, no server can help.
 */
@@ -63,11 +62,9 @@ When using a local NTP server(chrony), you can reduce this:
 --ms=7 with ESP32-C3
 and --ms=8-10 with ESP32
 esp32-c3 although the cheapest in the family, has superb wifi lag(low)
-However I still prefer ESP32 lolin32 due to Lipo socket. The measurement
-is very lengthly, and the Lipo prevents accidental interruptions. I guess
-if you use a power bank (connected to AC) you can use any module.
+However I still prefer ESP32 lolin32 due to Lipo socket.
 */
-NTP-ERROR-MAX := (Duration --ms=30) // Reduce to 10 for local chrony
+NTP-ERROR-MAX := (Duration --ms=30) // Reduce to 10- for local chrony
 /**
 You can reduce it a little further, to have better accuracy, when
 setting the time to the DS3231 (when the program starts). The first NTP
@@ -83,7 +80,7 @@ CHECK-PERIOD ::= (Duration --m=30)
 /** See the example "ntp-plus-rtc.toit" for various pinout setups */
 // rtc ::= Ds3231 --scl=4 --sda=5 // esp32-c3 luatos core
 // for ESP32 Devkit and lolin32/lite the following is convenient.
-rtc :=  Ds3231 --sda=33 --scl=32 --vcc=25 --gnd=26
+rtc ::=  Ds3231 --sda=33 --scl=32 --vcc=25 --gnd=26
 
 /**
 The MQTT client object. You can use a private server of course.
@@ -98,13 +95,18 @@ client/mqtt.SimpleClient? := null // main->mqtt-setup does the connection
 // TIMEZONE ::= "EET-2EEST,M3.5.0/3,M10.5.0/4"
 TIMEZONE ::= null // for UTC
 
-/** You may want the buldin led to be ON :
-- to be sure that the module is powered.
-- if the led turns off, to know something happened
-Otherwise leave the values as null */
-//LED-PIN/int? ::= 22 // The pin with the LED, otherwise null
-//LED-VALUE/int? ::= 0 // 1(active high) 0(active low) or null(no led)
-LED-PIN/int? ::= null
+/** If the led turns off, you know something happened
+power outage or program crash. */
+
+// lolin32 lite
+// LED-PIN/int? ::= 22
+// LED-VALUE/int? ::= 0 // active low
+
+// ESP32 devkit
+// LED-PIN/int? ::= 2
+// LED-VALUE/int? ::= 1 // active high
+
+LED-PIN/int? ::= null // no led indicator
 LED-VALUE/int? ::= null
 
 /** END OF CONFIGURATION */
@@ -112,18 +114,27 @@ LED-VALUE/int? ::= null
 TOPIC ::= "rtc/ds3231-$ID/aging-offset-$net.open.address"
 
 main:
+  // it is better the time to be reported as local time
   if TIMEZONE != null:
     set-timezone TIMEZONE
+  //
   if LED-PIN and LED-VALUE:
     p ::= gpio.Pin LED-PIN --output
     p.set LED-VALUE
-  
-  /** sets the system+RTC time from NTP, and return how accurate
-  the measurement was */
+  //
+  /** sets the system+RTC time from NTP, and returns the accuracy
+  of the measurement. */
   ntp-accuracy ::= time-setup
+  //
+  // For TLS connections the time must be correct
   mqtt-setup
+  //
   mqtt-pub "Connected to mqtt"
+  //
+  // We write the time to the DS3231 chip
   rtc-setup
+  //
+  // running for long enough to find deviation between RTC and NTP
   calulate-drift ntp-accuracy
 
 /** Sets the system time using NTP. Returns the accuracy of the measurement */
