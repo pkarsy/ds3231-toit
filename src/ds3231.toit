@@ -7,13 +7,16 @@ Driver for the DS3231 Real Time Clock.
 */
 class Ds3231:
   /** The i2c adress of the DS3231 is 0x68 and cannot be changed */
-  static I2C-ADDRESS ::= 0x68
+  static I2C-ADDRESS/int ::= 0x68
 
-  static REG-START_ ::= 0x00  // The first time (seconds) register is at location 0x00.
-  static REG-NUM_ ::= 7       // and we read 7 consequitive reagisters, until (2-digit) years.
+  static REG-START_/int ::= 0x00  // The first time (seconds) register is at location 0x00.
+  static REG-NUM_/int ::= 7       // and we read 7 consequitive reagisters, until (2-digit) years.
 
-  static REG-AGING_ ::= 0x10 // The aging register.
-  static REG-TEMPERATURE_ ::= 0x11 // The decimals are ignored
+  static REG-AGING_/int ::= 0x10 // The aging register location.
+  static REG-TEMPERATURE_/int ::= 0x11 // The temp register location
+  static REG-CONTROL_/int ::= 0x0E
+  static REG-STATUS_/int ::= 0x0F
+  
 
   /**
     For direct register read/write
@@ -41,14 +44,6 @@ class Ds3231:
   gnd_/gpio.Pin? := null
 
   /**
-  Creates a Ds3231 instance, given a serial.Device object.
-
-  Deprecated. Use $(constructor device) instead.
-  */
-  constructor --device/serial.Device :
-    registers = device.registers
-
-  /**
   Creates a Ds3231 instance, given a serial.Device object
   */
   constructor device/serial.Device :
@@ -71,8 +66,8 @@ class Ds3231:
     try:
       /** will become true if vcc or gnd are GPIO pins */
       gpio-power := false
-      // The vcc and gnd are the first to configure,
-      // to allow the module to power up and continue with i2c transaction.
+      /** The vcc and gnd are the first to configure,
+      to allow the module to power up and communicate with i2c. */
       if vcc and vcc >= 0:
         vcc_ = gpio.Pin vcc --output
         vcc_.set 1
@@ -82,7 +77,8 @@ class Ds3231:
         gnd_.set 0
         gpio-power = true
       if gpio-power:
-        sleep --ms=5 // To allow the DS3231 to power up. Not sure is needed.
+        // Gives some time for the DS3231 to power up. Not sure is needed.
+        sleep --ms=5
       sda_ = gpio.Pin sda
       scl_ = gpio.Pin scl
       bus = i2c.Bus --sda=sda_ --scl=scl_
@@ -135,7 +131,8 @@ class Ds3231:
         v1 := registers.read-u8 REG-START_
         if v != v1:
           break
-    /** The time is read just when the seconds register (address 0x00) goes to the next second. */
+    /** The time is read just when the seconds register (address 0x00)
+    goes to the next second. */
     rtctime = this.get_ 
     adjustment := Time.now.to rtctime
     if not allow-wrong-time and rtctime.utc.year < 2025:
@@ -150,11 +147,11 @@ class Ds3231:
   set adjustment/Duration
       --wait-sec-change/bool=true
       --allow-wrong-time/bool=false -> none :
-    adjustment += Duration --us=2750 // We compensate for the i2c and MCU delays.
+    adjustment += (Duration --us=2750) // We compensate for the i2c and MCU delays.
     if not allow-wrong-time and (Time.now + adjustment).utc.year < 2025:
       throw "YEAR_LESS_THAN_2025"
     t := Time.now + adjustment
-    if wait-sec-change: // Wait until the second changes for better accuracy.
+    if wait-sec-change: // Wait until the second changes (for better accuracy).
       s := t.utc.s
       while true:
         yield // allow other tasks to run
@@ -197,16 +194,18 @@ class Ds3231:
   Reads the aging offset from the chip.
   
   When first powered it has the value of 0, but if set to a
-  different value, it can retain this value as long is powered
+  different value, it can retain this value as long as it is powered
   or battery backed. */
   get-aging-offset -> int: // useful with "offset-calulator.toit"
     return registers.read-i8 REG-AGING_
 
+  /** internal function, calls $set-value-with-mask with specific
+  register and mask */
   set-sqw_ value -> none:
     set-value-with-mask
-        --register=0x0e
-        --mask=0b000_111_00
-        --value=value
+      --register=0x0e
+      --mask=0b000_111_00
+      --value=value
 
   /**
   Sets some bits of the given $register.
@@ -219,31 +218,32 @@ class Ds3231:
   set-value-with-mask --register/int --mask/int --value/int -> none:
     if not ((0 <= register <= 0x12) and (0 <= mask <= 255) and (0 <= value <= 255)):
       throw "PARAMETER_OUT_OF_BOUNDS"
-    new-value := value
+    new-value/int := value
     old-value/int := registers.read-u8 register
-    value-to-apply := (old-value & ~mask) | (new-value & mask)
+    value-to-apply/int := (old-value & ~mask) | (new-value & mask)
     registers.write-u8 register value-to-apply
 
-  /** Deprecated. Use $enable-sqw-output instead. */
+  /** Equivalent with $enable-sqw-output --frequency=1 */
   enable-sqw-1hz -> none :
     set-sqw_ 0b000_000_00 // RS2->0 RS1->0 INTCN->0
+    
 
-  /** Deprecated. Use $enable-sqw-output instead. */
+  /** Equivalent with $enable-sqw-output --frequency=1000 */
   enable-sqw-1kilohz -> none:
     set-sqw_ 0b000_010_00
 
-  /** Deprecated. Use $enable-sqw-output instead. */
+  /** Equivalent with $enable-sqw-output --frequency=4000 */
   enable-sqw-4kilohz -> none :
     set-sqw_ 0b000_100_00
 
-  /** Deprecated. Use $enable-sqw-output instead. */
+  /** Equivalent with $enable-sqw-output --frequency=8000 */
   enable-sqw-8kilohz -> none :
     set-sqw_ 0b000_110_00
 
   /**
   Enables the given $frequency on the sqw pin.
 
-  The output is push-pull, so it does not need any pull-up or pull-down.
+  The output is open-drain, and it requires pull-up (external or software).
 
   The $frequency must be one of 1, 1000, 4000, or 8000.
   */
@@ -261,10 +261,6 @@ class Ds3231:
 
   /**
   Enables the battery-backed sqw.
-
-  This is generally not a good idea. Be especially careful not to
-  connect any pull-up or pull-down (even software enabled). It's not necesary,
-  and will consume precious energy from the coin-cell.
   */
   enable-battery-backed-sqw -> none :
     set-value-with-mask --register=0x0e --value=0b0_1_000000 --mask=0x0_1_000000
@@ -276,13 +272,53 @@ class Ds3231:
   disable-battery-backed-sqw -> none :
     set-value-with-mask --register=0x0e --value=0b0_0_000000 --mask=0x0_1_000000
 
-  /** Returns the temperature in celsius. The chip has a second register
-  with 0.25 degrees granularity but it is ignored. The measurement is +/- 3 degress anyway.
-  TODO fix this
+  /** Returns the temperature in celsius.
+
+  The value seems to have 0.25°C accuracy but in fact it can have
+  up to 3 degrees error. However with the decimals you can find
+  if the temp is going up or down. Tested and working correctly
+  with both positive and negative values.
   */
-  get-temperature -> int :
-    /** the data is stored as 2 complement */
-    return registers.read-i8 REG-TEMPERATURE_
+  get-temperature -> float :
+    /** (4*temp) is stored as 10-bit 2-complement number
+    buf[0] the sign + 7 most significant bits
+    buf[1] bits 7 and 8 represent the decimal part 
+    the other bits are ignored */
+    buf ::= registers.read-bytes REG-TEMPERATURE_ 2
+    temp := (buf[0]<<2) | (buf[1]>>6)
+    // the temp (32bit integer) now contains the 10-bit value
+    if (temp & (1<<9))!=0: // if the 10-bit number is negative
+      temp -= (1<<10) // remove 1024
+    // else the number is positive and we leave it as is.
+    //
+    // at this point temp only needs to be divided by 4
+    return temp.to-float/4
+
+  /** Forces a temperature conversion. Returns when the operation is
+  finished. Usually not needed (happens automatically every 64sec),
+  only if you use your DS3231 as a thermometer ! */
+  force-temp-conversion -> none:
+    CONV ::= (1<<5) // in Control Register
+    BSY ::= (1<<2) // in Status Register
+    if ((registers.read-u8 REG-STATUS_) & BSY) !=0 : // already in temp conversion mode
+      15.repeat:
+        if ((registers.read-u8 REG-STATUS_) & BSY) == 0:
+          return
+        else:
+          sleep --ms=10
+          // print "BSY"
+      throw "TIMEOUT_WAITING_BSY"
+    else: // Not BSY flag, we can initiate a Temp Conversion
+      // set the CONV bit to 1
+      set-value-with-mask --register=REG-CONTROL_ --mask=CONV --value=CONV
+      15.repeat:
+        if ((registers.read-u8 REG-CONTROL_) & CONV)==0:
+          return
+        else:
+          sleep --ms=10
+          //print "CONV"
+      throw "TIMEOUT_WAITING_CONV"
+   
 
   /**
   Returns the expected drift. A Time object must be given

@@ -103,7 +103,7 @@ is battery backed.
 ### Temperature
 > get-temperature
 
-returns the temperature in °C. Internally is updated every about 1 min (SN model).
+returns the temperature in °C as a float. Internally is updated every about 1 min (SN model).
 
 ### Clock drift
 > expected-drift
@@ -117,8 +117,8 @@ Not implemented at the moment.
 
 > set-aging-offset
 
-Can get a value from -128 up to 127 to make the clock more accurate (in fact less than 2ppm).
-- inside tools/ there is the **offset-calculator.toit app**. The hardware setup is minimal a
+Can get a value from -128 up to 127 to make the clock more accurate (significantly less than 2ppm).
+- inside tools/ there is the **offset-calculator.toit** program. The hardware setup is minimal a
   ESP32x and a Ds3231 module. It is very slow, but you can use
   multiple modules in parallel.
 - [this project](https://github.com/gbhug5a/DS3231-Aging-GPS), is much faster but also
