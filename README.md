@@ -74,18 +74,18 @@ All the above are only useful, if you know the wanted accuracy. Some hints:
 - Inspect the examples to see how they work in practice.
 - Almost all library calls can raise exceptions, for example when the cabling is bad.
 
-### Constructor
+## Constructor
 You can create the driver instance in 2 ways.
 - Create the i2c bus object first, and then pass it to the constructor.
 - If the DS3231 is the only i2c device in the bus (most common case) you
   can simply pass the pin numbers to the constructor.
 
-### Setting and getting the time
+## Setting and getting the time
 This library, just like the ntp library, uses time-adjustment instead of absolute
 time. This is a clever way to set the time correctly, even if there is a time gap
 between time-get (for instance from NTP) and time-set (to the DS3231)
 
-### SQW pin
+## SQW pin
 The library does not use/need this pin by itself, but you may find it usefull
 for other purposes, as interrupt source etc. The following functions can
 control the SQW output.
@@ -100,31 +100,32 @@ disable-battery-backed-sqw
 DS3232 will retain the register settings as long as the module is active or
 is battery backed.
 
-### Temperature
+## Temperature
 > get-temperature
 
-returns the temperature in °C as a float. Internally is updated every about 1 min (SN model).
+returns the temperature in °C as a float. Internally is updated every about 1 min (SN model). However you can force a temperature conversion with
+> force-temp-conversion
 
-### Clock drift
+## Clock drift
 > expected-drift
 
 shows the expected time drift (assuming 2ppm error) since the given time. The real drift is usually smaller. You can set the ppm error.
 
-### ALARM 1/2
+## ALARM 1/2
 Not implemented at the moment.
 
-### Aging correction
+## Aging correction
 
 > set-aging-offset
 
 Can get a value from -128 up to 127 to make the clock more accurate (significantly less than 2ppm).
-- inside tools/ there is the **offset-calculator.toit** program. The hardware setup is minimal a
+- inside tools there is the **offset-calculator.toit** program. The hardware setup is minimal a
   ESP32x and a Ds3231 module. It is very slow, but you can use
   multiple modules in parallel.
 - [this project](https://github.com/gbhug5a/DS3231-Aging-GPS), is much faster but also
   needs more work (and hardware) to implement.
 
-### VCC GND and battey powered projects
+## VCC GND and battey powered projects
 On battery, the 4mA the DS3231 is using, is a huge consumption. For this
 purpose the VCC and GND can be GPIO pins, and the DS3231 module is powered OFF when
 in deep-sleep. Assuming a good CR2032 coin cell, the time keeping function will
